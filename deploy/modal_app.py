@@ -83,6 +83,7 @@ class VoiceServer:
         from fastapi.responses import FileResponse
         from pydantic import BaseModel
 
+        from backend.audio.export import export, media_type
         from backend.audio.postprocess import postprocess
         from backend.text.normalize import normalize_egyptian
 
@@ -105,6 +106,8 @@ class VoiceServer:
             diacritics: bool = False
             postprocess: bool = True
             lufs: float = -14.0
+            multiband: str | None = None
+            fmt: str = "wav"
 
         @fast.get("/health")
         def health() -> dict:
@@ -126,8 +129,9 @@ class VoiceServer:
                 num_step=body.steps, guidance_scale=body.guidance, speed=body.speed,
             )
             if body.postprocess:
-                out = postprocess(out, target_lufs=body.lufs)
-            return FileResponse(out, media_type="audio/wav", filename="speech.wav")
+                out = postprocess(out, target_lufs=body.lufs, multiband=body.multiband)
+            out = export(out, body.fmt)
+            return FileResponse(out, media_type=media_type(out), filename=os.path.basename(out))
 
         @fast.post("/clone", dependencies=[Depends(require_token)])
         async def clone(
@@ -141,6 +145,8 @@ class VoiceServer:
             diacritics: bool = Form(False),
             postprocess_out: bool = Form(True),
             lufs: float = Form(-14.0),
+            multiband: str | None = Form(None),
+            fmt: str = Form("wav"),
         ) -> FileResponse:
             ref = os.path.join(out_dir, f"ref_{uuid.uuid4().hex[:8]}.wav")
             with open(ref, "wb") as fh:
@@ -155,7 +161,8 @@ class VoiceServer:
                 num_step=steps, guidance_scale=guidance, speed=speed,
             )
             if postprocess_out:
-                out = postprocess(out, target_lufs=lufs)
-            return FileResponse(out, media_type="audio/wav", filename="clone.wav")
+                out = postprocess(out, target_lufs=lufs, multiband=multiband)
+            out = export(out, fmt)
+            return FileResponse(out, media_type=media_type(out), filename=os.path.basename(out))
 
         return fast

@@ -4,10 +4,11 @@
     1) تشذيب السكوت الزايد
     2) High-pass  → شيل الزمزمة/الدبدبة (< 80Hz)
     3) De-esser   → تقليل حروف السين/الشين الحادّة (5–9kHz)
-    4) EBU R128   → تطبيع الجهارة لـ ~ -14 LUFS (معيار البث/يوتيوب/سبوتيفاي)
-    5) True-peak  → تأمين الذروة عند -1 dBTP (منع التشويش)
-    6) Fade in/out
-    7) (اختياري) Resample لـ 48kHz للإنتاج النهائي
+    4) Multiband  → ضغط/EQ متعدد النطاقات (اختياري: voice/warm/punch/broadcast)
+    5) EBU R128   → تطبيع الجهارة لـ ~ -14 LUFS (معيار البث/يوتيوب/سبوتيفاي)
+    6) True-peak  → تأمين الذروة عند -1 dBTP (منع التشويش)
+    7) Fade in/out
+    8) (اختياري) Resample لـ 48kHz للإنتاج النهائي
 
 كله محلي بالكامل (numpy + scipy + pyloudnorm) — من غير أي برنامج خارجي.
 """
@@ -19,7 +20,7 @@ import numpy as np
 import pyloudnorm as pyln
 import soundfile as sf
 from scipy.ndimage import uniform_filter1d
-from scipy.signal import butter, resample_poly, sosfilt
+from scipy.signal import butter, lfilter, resample_poly, sosfilt, sosfiltfilt
 
 # ── 1) تنضيف ──────────────────────────────────────────────────────────────
 
@@ -89,6 +90,148 @@ def deess(
 
     # نشيل الصفير الأصلي ونرجّعه بالمكسب المخفّض
     return data - sibilance * (1.0 - gain)
+
+
+# ── 3.5) Multiband compressor + EQ ────────────────────────────────────────
+# بنفصل الصوت ٣ نطاقات (واطي/وسط/عالي) ونضغط كل نطاق لوحده، فالصوت يطلع
+# متوازن وواضح من غير ما الواطي يخنق العالي أو العكس — ده اللي بيدّي
+# الإحساس «الإعلاني/الإذاعي» الاحترافي.
+
+MULTIBAND_PRESETS: dict[str, dict] = {
+    # متوازن وناعم — مناسب لمعظم الإعلانات
+    "voice": {
+        "crossovers": (250.0, 4000.0),
+        "bands": [
+            {"threshold_db": -24.0, "ratio": 3.0, "attack_ms": 15.0, "release_ms": 180.0, "gain_db": 0.0},
+            {"threshold_db": -20.0, "ratio": 2.5, "attack_ms": 8.0, "release_ms": 120.0, "gain_db": 0.0},
+            {"threshold_db": -26.0, "ratio": 2.0, "attack_ms": 3.0, "release_ms": 90.0, "gain_db": -1.5},
+        ],
+    },
+    # دافي: باس أكتر + عالي أهدى (صوت رجالي عميق / إعلان فخم)
+    "warm": {
+        "crossovers": (220.0, 4500.0),
+        "bands": [
+            {"threshold_db": -22.0, "ratio": 2.5, "attack_ms": 20.0, "release_ms": 200.0, "gain_db": 2.0},
+            {"threshold_db": -20.0, "ratio": 2.0, "attack_ms": 10.0, "release_ms": 130.0, "gain_db": 0.0},
+            {"threshold_db": -28.0, "ratio": 2.5, "attack_ms": 3.0, "release_ms": 80.0, "gain_db": -3.0},
+        ],
+    },
+    # حماسي/قوي: ضغط أعلى والوسط أبرز (إعلانات عروض)
+    "punch": {
+        "crossovers": (200.0, 3500.0),
+        "bands": [
+            {"threshold_db": -26.0, "ratio": 3.5, "attack_ms": 12.0, "release_ms": 150.0, "gain_db": 1.0},
+            {"threshold_db": -22.0, "ratio": 3.5, "attack_ms": 5.0, "release_ms": 90.0, "gain_db": 1.5},
+            {"threshold_db": -28.0, "ratio": 2.5, "attack_ms": 2.0, "release_ms": 70.0, "gain_db": -1.0},
+        ],
+    },
+    # بث/راديو: متماسك وثابت طول الوقت
+    "broadcast": {
+        "crossovers": (300.0, 3500.0),
+        "bands": [
+            {"threshold_db": -24.0, "ratio": 4.0, "attack_ms": 10.0, "release_ms": 140.0, "gain_db": 0.0},
+            {"threshold_db": -24.0, "ratio": 4.0, "attack_ms": 5.0, "release_ms": 100.0, "gain_db": 0.0},
+            {"threshold_db": -30.0, "ratio": 3.0, "attack_ms": 2.0, "release_ms": 70.0, "gain_db": -2.0},
+        ],
+    },
+}
+
+
+def _lr4(data: np.ndarray, sr: int, fc: float, btype: str) -> np.ndarray:
+    """فلتر Linkwitz-Riley رابع (زيرو-فاز عبر filtfilt) — بيسمح بإعادة تجميع
+    النطاقات من غير تلوين (مجموع الواطي+الوسط+العالي ≈ الأصلي)."""
+    nyq = sr / 2.0
+    fc = min(max(fc, 1.0), nyq * 0.98)
+    sos = butter(2, fc / nyq, btype=btype, output="sos")
+    return sosfiltfilt(sos, data, axis=0)
+
+
+def split_bands(
+    data: np.ndarray, sr: int, crossovers: tuple[float, float] = (250.0, 4000.0)
+) -> list[np.ndarray]:
+    """يقسّم الصوت ٣ نطاقات: واطي / وسط / عالي."""
+    c1, c2 = float(crossovers[0]), float(crossovers[1])
+    if c1 > c2:
+        c1, c2 = c2, c1
+    low = _lr4(data, sr, c1, "lowpass")
+    mid = _lr4(_lr4(data, sr, c1, "highpass"), sr, c2, "lowpass")
+    high = _lr4(data, sr, c2, "highpass")
+    return [low, mid, high]
+
+
+def _envelope(
+    rect: np.ndarray, sr: int, attack_ms: float, release_ms: float
+) -> np.ndarray:
+    """متتابع غلاف بمهاجمة سريعة وتحرير بطيء (dual one-pole)."""
+    a = math.exp(-1000.0 / (sr * max(attack_ms, 0.05)))
+    r = math.exp(-1000.0 / (sr * max(release_ms, 0.05)))
+    fast = lfilter([1.0 - a], [1.0, -a], rect, axis=0)
+    slow = lfilter([1.0 - r], [1.0, -r], rect, axis=0)
+    return np.where(fast >= slow, fast, slow)
+
+
+def compress_band(
+    x: np.ndarray,
+    sr: int,
+    *,
+    threshold_db: float = -20.0,
+    ratio: float = 3.0,
+    attack_ms: float = 8.0,
+    release_ms: float = 120.0,
+    gain_db: float = 0.0,
+    knee_db: float = 6.0,
+    max_reduction_db: float = 24.0,
+) -> np.ndarray:
+    """ضغط نطاق واحد (soft-knee) + مكسب ثابت (EQ) للنطاق."""
+    if ratio <= 1.0:
+        return x * (10.0 ** (gain_db / 20.0))
+
+    env_db = 20.0 * np.log10(_envelope(np.abs(x), sr, attack_ms, release_ms) + 1e-12)
+    over = env_db - threshold_db
+    half = knee_db / 2.0
+    slope = 1.0 - 1.0 / ratio
+    gain_arr = np.where(
+        over <= -half,
+        0.0,
+        np.where(
+            over >= half,
+            -slope * over,
+            -slope * (over + half) ** 2 / (2.0 * knee_db),
+        ),
+    )
+    gain_arr = np.clip(gain_arr, -max_reduction_db, 0.0) + gain_db
+    return x * (10.0 ** (gain_arr / 20.0))
+
+
+def multiband_compressor(data: np.ndarray, sr: int, preset: str = "voice") -> np.ndarray:
+    """يضغط الصوت متعدد النطاقات حسب preset (voice/warm/punch/broadcast)."""
+    cfg = MULTIBAND_PRESETS.get(preset)
+    if not cfg or data.size == 0:
+        return data
+    bands = split_bands(data, sr, cfg["crossovers"])
+    out = np.zeros_like(data, dtype=np.float64)
+    for band, params in zip(bands, cfg["bands"]):
+        out += compress_band(band, sr, **params)
+    return out
+
+
+def tilt_eq(
+    data: np.ndarray,
+    sr: int,
+    *,
+    low_db: float = 0.0,
+    mid_db: float = 0.0,
+    high_db: float = 0.0,
+    crossovers: tuple[float, float] = (250.0, 4000.0),
+) -> np.ndarray:
+    """EQ بسيط ٣ نطاقات (مكاسب ثابتة، من غير ضغط)."""
+    if low_db == mid_db == high_db == 0.0:
+        return data
+    bands = split_bands(data, sr, crossovers)
+    out = np.zeros_like(data, dtype=np.float64)
+    for band, gain_db in zip(bands, (low_db, mid_db, high_db)):
+        out += band * (10.0 ** (gain_db / 20.0))
+    return out
 
 
 # ── 4) EBU R128 loudness ──────────────────────────────────────────────────
@@ -164,6 +307,7 @@ def postprocess(
     trim: bool = True,
     highpass_hz: float = 80.0,
     deesser: bool = True,
+    multiband: str | None = None,
     target_lufs: float = -14.0,
     true_peak_db: float = -1.0,
     fade_ms: int = 10,
@@ -182,6 +326,8 @@ def postprocess(
         data = highpass(data, sr, highpass_hz)
     if deesser:
         data = deess(data, sr)
+    if multiband:
+        data = multiband_compressor(data, sr, multiband)
     if target_lufs is not None:
         data = normalize_loudness(data, sr, target_lufs)
     data = peak_safety(data, true_peak_db)

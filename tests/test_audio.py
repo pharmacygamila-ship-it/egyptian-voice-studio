@@ -19,13 +19,19 @@ try:
 except Exception:  # noqa: BLE001
     pass
 
+from backend.audio.export import export, media_type  # noqa: E402
 from backend.audio.postprocess import (  # noqa: E402
+    MULTIBAND_PRESETS,
     analyze,
+    compress_band,
     deess,
     highpass,
     measure_loudness,
+    multiband_compressor,
     peak_safety,
     postprocess,
+    split_bands,
+    tilt_eq,
 )
 
 ok = True
@@ -109,6 +115,69 @@ except Exception as exc:  # noqa: BLE001
 
 # ── 7) القياس المباشر ───────────────────────────────────────────────────
 check("measure_loudness: يرجّع رقم", np.isfinite(measure_loudness(sig, sr0)))
+
+
+def rms(x: np.ndarray) -> float:
+    return float(np.sqrt(np.mean(np.asarray(x, dtype=np.float64) ** 2)))
+
+
+# ── 8) ضغط/ EQ متعدد النطاقات ────────────────────────────────────────────
+bands = split_bands(sig, sr0, (250.0, 4000.0))
+recon = bands[0] + bands[1] + bands[2]
+err = rms(recon - sig) / (rms(sig) + 1e-12)
+check("split_bands: إعادة التجميع ≈ الأصلي", err < 0.05)
+print(f"    -> خطأ إعادة التجميع {err * 100:.2f}%")
+
+mb = multiband_compressor(sig, sr0, "voice")
+check("multiband: نفس الطول/مفيش NaN", mb.shape == sig.shape and bool(np.all(np.isfinite(mb))))
+check("multiband: غيّر الإشارة (ضغط فعلي)", not np.allclose(mb, sig))
+check(
+    "multiband: كل الـ presets شغّالة",
+    all(np.all(np.isfinite(multiband_compressor(sig, sr0, p))) for p in MULTIBAND_PRESETS),
+)
+
+# ضغط مباشر لنطاق واحد
+loud = 0.8 * np.sin(2 * np.pi * 300 * np.arange(sr0) / sr0)
+quiet = 0.02 * np.sin(2 * np.pi * 300 * np.arange(sr0) / sr0)
+c_loud = compress_band(loud, sr0, threshold_db=-20, ratio=4, attack_ms=5, release_ms=80)
+c_quiet = compress_band(quiet, sr0, threshold_db=-20, ratio=4, attack_ms=5, release_ms=80)
+check("compress_band: العالي اتضغط", rms(c_loud) < rms(loud) * 0.9)
+check("compress_band: الواطي ما اتغيّرش", abs(rms(c_quiet) - rms(quiet)) < rms(quiet) * 0.02)
+check("compress_band: ratio=1 = بدون تغيير", np.allclose(compress_band(loud, sr0, ratio=1.0), loud))
+check(
+    "compress_band: gain_db = EQ",
+    rms(compress_band(quiet, sr0, ratio=1.0, gain_db=6.0)) > rms(quiet) * 1.9,
+)
+
+# EQ بسيط
+check("tilt_eq: صفر = بدون تغيير", np.array_equal(tilt_eq(sig, sr0), sig))
+check(
+    "tilt_eq: الواطي زاد",
+    band_energy(tilt_eq(sig, sr0, low_db=6.0), sr0, 60, 180)
+    > band_energy(sig, sr0, 60, 180),
+)
+
+# السلسلة الكاملة مع multiband
+out_mb = os.path.join(tmp, "out_mb.wav")
+postprocess(in_path, out_mb, multiband="punch")
+rep_mb = analyze(out_mb)
+check("postprocess(multiband=punch): الجهارة ~ -14 LUFS", -15.0 <= rep_mb["lufs"] <= -13.0)
+
+# ── 9) تصدير MP3 ─────────────────────────────────────────────────────────
+mp3_path = export(out_path, "mp3", bitrate=192)
+check("export mp3: الملف اتكتب", os.path.exists(mp3_path) and os.path.getsize(mp3_path) > 1000)
+with open(mp3_path, "rb") as fh:
+    head = fh.read(3)
+check("export mp3: بصمة MP3 صحيحة", head[:3] == b"ID3" or head[0] == 0xFF)
+back, _ = sf.read(mp3_path, always_2d=False, dtype="float32")
+check("export mp3: قابل للقراءة", back.size > 0)
+check("export mp3: media_type", media_type(mp3_path) == "audio/mpeg")
+check("export wav: بيرجّع نفس المسار", export(out_path, "wav") == out_path)
+try:
+    export(out_path, "ogg")
+    check("export: يرفض صيغة غلط", False)
+except ValueError:
+    check("export: يرفض صيغة غلط", True)
 
 print(f"\n==> {total} اختبار |", "كله تمام ✅" if ok else "فيه فشل ❌")
 raise SystemExit(0 if ok else 1)

@@ -16,4 +16,5 @@ soundfile>=0.12
 numpy>=1.26
 scipy>=1.11
 pyloudnorm>=0.1.1
+lameenc>=1.7
 requests>=2.31

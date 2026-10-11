@@ -96,6 +96,19 @@
       <label style="display:flex;align-items:center;gap:8px;margin-top:4px">
         <input type="checkbox" id="diacritics" style="width:auto"> تشكيل الكلمات الملتبسة (اختياري — للنطق الأدق)
       </label>
+      <label for="multiband">ضغط/EQ متعدد النطاقات (Multiband)</label>
+      <select id="multiband">
+        <option value="" selected>مقفول (بدون)</option>
+        <option value="voice">voice — متوازن (موصى به)</option>
+        <option value="warm">warm — دافي</option>
+        <option value="punch">punch — حماسي</option>
+        <option value="broadcast">broadcast — بث/راديو</option>
+      </select>
+      <label for="fmt">صيغة الملف الناتج</label>
+      <select id="fmt">
+        <option value="wav" selected>WAV (أعلى جودة)</option>
+        <option value="mp3">MP3 (أصغر حجم — 192kbps)</option>
+      </select>
       <label for="token">توكن السيرفر (لو مفعّل)</label>
       <input type="text" id="token" placeholder="اتركه فاضي لو مش مطلوب">
     </details>
@@ -185,12 +198,14 @@ $('goVoice').addEventListener('click', async () => {
         text, speaker: $('speaker').value,
         steps: +$('steps').value, guidance: +$('guidance').value, speed: +$('speed').value,
         lufs: +$('lufs').value, postprocess: $('pp').checked,
-        diacritics: $('diacritics').checked
+        diacritics: $('diacritics').checked,
+        multiband: $('multiband').value || null,
+        fmt: $('fmt').value
       })
     });
     if(!r.ok){ const e = await r.json().catch(()=>({})); throw new Error(e.detail || ('خطأ '+r.status)); }
     const blob = await r.blob();
-    await playBlob(blob, $('player'), $('dl'), 'speech.wav');
+    await playBlob(blob, $('player'), $('dl'), 'speech.' + $('fmt').value);
     setStatus(st,'✓ تم التوليد','ok');
   }catch(e){ setStatus(st,'❌ '+e.message,'err'); }
   finally{ btn.disabled = false; }
@@ -214,10 +229,12 @@ $('goClone').addEventListener('click', async () => {
     fd.append('lufs', $('lufs').value);
     fd.append('postprocess_out', $('pp').checked);
     fd.append('diacritics', $('diacritics').checked);
+    fd.append('multiband', $('multiband').value);
+    fd.append('fmt', $('fmt').value);
     const r = await fetch('/clone', { method:'POST', headers: authHeaders(), body: fd });
     if(!r.ok){ const e = await r.json().catch(()=>({})); throw new Error(e.detail || ('خطأ '+r.status)); }
     const blob = await r.blob();
-    await playBlob(blob, $('player2'), $('dl2'), 'clone.wav');
+    await playBlob(blob, $('player2'), $('dl2'), 'clone.' + $('fmt').value);
     setStatus(st,'✓ تم الاستنساخ','ok');
   }catch(e){ setStatus(st,'❌ '+e.message,'err'); }
   finally{ btn.disabled = false; }

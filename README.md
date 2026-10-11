@@ -48,7 +48,9 @@
 │   │   ├─ numbers.py          الأرقام → كلام مصري (خمسين / ألفين…)
 │   │   ├─ lexicon.py          نطق الأجنبي + الوحدات (واتساب / كيلوجرام)
 │   │   └─ diacritics.py       تشكيل كلمات ملتبسة (اختياري)
-│   └─ audio/postprocess.py    معالجة صوت إعلانية
+│   └─ audio/
+│       ├─ postprocess.py      معالجة صوت إعلانية + ضغط متعدد النطاقات
+│       └─ export.py           تصدير WAV/MP3 (بدون ffmpeg)
 ├─ deploy/
 │   ├─ README.md               خطوات RunPod / Vast.ai / Docker / Colab / Modal
 │   ├─ setup_gpu.sh            تجهيز بيئة GPU
@@ -200,18 +202,24 @@ normalize_egyptian("خصم 50", diacritics=True)        # → "خَصْم خمس
 | تشذيب السكوت | يشيل الفراغات من الأول والآخر |
 | High-pass (80Hz، رتبة 4) | شيل الزمزمة/الدبدبة → صوت أنضف |
 | **De-esser** (5–9kHz) | يهدّي حروف السين/الشين الحادّة |
+| **Multiband** (اختياري) | ضغط/EQ ٣ نطاقات → صوت متوازن وواضح (إحساس «إعلاني») |
 | **EBU R128** | جهارة موحّدة **-14 LUFS** (معيار يوتيوب/سبوتيفاي/البث) |
 | True-peak safety | الذروة ≤ **-1 dBTP** (منع التشويش) |
 | Fade + Resample | دخول/خروج ناعم + تصدير 48kHz |
 
 ```python
 from backend.audio.postprocess import postprocess, analyze
-postprocess("in.wav", "out.wav", target_lufs=-14.0, target_sr=48000)
+from backend.audio.export import export
+postprocess("in.wav", "out.wav", target_lufs=-14.0, target_sr=48000, multiband="voice")
 print(analyze("out.wav"))   # {"sr":48000,"seconds":..,"lufs":-14.0,"peak_dbfs":-4.6}
+export("out.wav", "mp3", bitrate=192)   # → out.mp3 (بدون ffmpeg)
 ```
 
 مستويات جاهزة: **-16** بودكاست · **-14** بث/إعلانات (افتراضي) · **-12** إعلان صاخب · **-9** أقصى جهارة.
 متاح من الواجهة ومن الـ API (خانة `lufs`)، وكله محلي من غير أي برنامج خارجي.
+
+**الضغط متعدد النطاقات (`multiband`):** `voice` متوازن · `warm` دافي · `punch` حماسي · `broadcast` بث/راديو.
+**تصدير MP3:** عبر `lameenc` (192kbps افتراضي) — من الواجهة (صيغة الملف) أو `fmt=mp3` في الـ API أو `--mp3` في الـ CLI.
 
 ---
 
@@ -234,7 +242,7 @@ CI بيشغّل كل الاختبارات تلقائياً على كل push (`.g
 1. توفير GPU (محلي أو سحابي) → تشغيل `LocalVoiceTutEngine`.
 2. ✅ قاموس البراندات/الشركات المصرية + تشكيل الكلمات الملتبسة (`backend/text/`).
 3. ✅ مسار fine-tune لاستنساخ «نفس الأداء الصوتي» (`finetune/`) — يتبقى تركيب API التدريب الرسمي.
-4. تصدير MP3 + EQ متعدد النطاقات (multiband compressor).
+4. ✅ تصدير MP3 + ضغط/EQ متعدد النطاقات (`backend/audio/`).
 5. واجهة متقدمة (Gradio / Next.js) + رفع الريبو على GitHub.
 
 ---

@@ -24,6 +24,7 @@ import zipfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+from backend.audio.export import export  # noqa: E402
 from backend.audio.postprocess import analyze, postprocess  # noqa: E402
 from backend.engine.base import SynthRequest  # noqa: E402
 from backend.engine.factory import build_engine  # noqa: E402
@@ -50,6 +51,10 @@ def main() -> int:
     ap.add_argument("--zip", dest="zip_path", help="يضغط كل النواتج في ملف zip")
     ap.add_argument("--diacritics", action="store_true",
                     help="تشكيل الكلمات الملتبسة (اختياري)")
+    ap.add_argument("--multiband", choices=["voice", "warm", "punch", "broadcast"],
+                    help="ضغط/EQ متعدد النطاقات (اختياري)")
+    ap.add_argument("--mp3", action="store_true", help="صدّر MP3 بدل WAV")
+    ap.add_argument("--bitrate", type=int, default=192, help="معدّل بت MP3 (kbps)")
     ap.add_argument("--dry-run", action="store_true", help="يعرض الخطة من غير توليد")
     args = ap.parse_args()
 
@@ -73,7 +78,8 @@ def main() -> int:
         out = os.path.join(args.out, f"{name}.wav")
 
         if args.dry_run:
-            print(f"[dry] {os.path.basename(path):<24} → {out}  (صوت: {speaker})")
+            ext = "mp3" if args.mp3 else "wav"
+            print(f"[dry] {os.path.basename(path):<24} → {name}.{ext}  (صوت: {speaker})")
             continue
 
         print(f"[..] {os.path.basename(path)}  (صوت: {speaker})")
@@ -83,7 +89,9 @@ def main() -> int:
                 guidance=args.guidance, speed=args.speed,
             )
             path_out = engine.synthesize(req, out)
-            postprocess(path_out)
+            postprocess(path_out, multiband=args.multiband)
+            if args.mp3:
+                path_out = export(path_out, "mp3", bitrate=args.bitrate)
             produced.append(path_out)
             rep = analyze(path_out)
             print(f"     ✓ {path_out}  ({rep['lufs']:.1f} LUFS)")

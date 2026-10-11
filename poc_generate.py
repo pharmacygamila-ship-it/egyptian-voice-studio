@@ -13,6 +13,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+from backend.audio.export import export  # noqa: E402
 from backend.audio.postprocess import analyze, postprocess  # noqa: E402
 from backend.engine.base import SynthRequest  # noqa: E402
 from backend.engine.remote_voicetut import RemoteVoiceTutEngine  # noqa: E402
@@ -35,6 +36,10 @@ def main() -> int:
     ap.add_argument("--diacritics", action="store_true",
                     help="تشكيل الكلمات الملتبسة (اختياري)")
     ap.add_argument("--no-postprocess", action="store_true")
+    ap.add_argument("--multiband", choices=["voice", "warm", "punch", "broadcast"],
+                    help="ضغط/EQ متعدد النطاقات (اختياري)")
+    ap.add_argument("--mp3", action="store_true", help="صدّر MP3 بدل WAV")
+    ap.add_argument("--bitrate", type=int, default=192, help="معدّل بت MP3 (kbps)")
     ap.add_argument("--server", help="رابط سيرفر GPU بتاعنا (يشغّل المحرك 'server')")
     ap.add_argument("--token", help="توكن السيرفر (TTS_SERVER_TOKEN)")
     ap.add_argument("--engine", choices=["remote", "server", "local"],
@@ -78,7 +83,9 @@ def main() -> int:
     print("[i] جاري التوليد (الـ Space المجاني ممكن يستغرق شوية)...")
     path = engine.synthesize(req, args.out)
     if not args.no_postprocess:
-        path = postprocess(path)
+        path = postprocess(path, multiband=args.multiband)
+    if args.mp3:
+        path = export(path, "mp3", bitrate=args.bitrate)
     rep = analyze(path)
     print(f"[✓] تم الحفظ: {path}")
     print(
