@@ -14,4 +14,6 @@ uvicorn[standard]>=0.29
 python-multipart>=0.0.9
 soundfile>=0.12
 numpy>=1.26
+scipy>=1.11
+pyloudnorm>=0.1.1
 requests>=2.31

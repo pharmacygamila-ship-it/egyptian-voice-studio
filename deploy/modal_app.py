@@ -37,7 +37,7 @@ image = (
     .pip_install("torch")                                     # Modal بتجهّز نسخة CUDA
     .pip_install("git+https://github.com/k2-fsa/OmniVoice.git")
     .pip_install("voicetut-tts")
-    .pip_install("fastapi", "uvicorn", "python-multipart", "soundfile", "numpy")
+    .pip_install("fastapi", "uvicorn", "python-multipart", "soundfile", "numpy", "scipy", "pyloudnorm")
     .env({"HF_HOME": HF_HOME, "TTS_ENGINE": "local", "TTS_OUTPUT_DIR": "/tmp/outputs"})
 )
 

@@ -44,6 +44,7 @@ class TTSBody(BaseModel):
     speed: float = Field(0.95, ge=0.5, le=2.0)
     normalize: bool = True
     postprocess: bool = True
+    lufs: float = Field(-14.0, ge=-24.0, le=-6.0, description="جهارة الهدف (EBU R128)")
 
 
 @app.get("/health")
@@ -86,7 +87,7 @@ def tts(body: TTSBody) -> FileResponse:
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     if body.postprocess:
-        path = postprocess(path)
+        path = postprocess(path, target_lufs=body.lufs)
     return FileResponse(path, media_type="audio/wav", filename=os.path.basename(path))
 
 
@@ -99,6 +100,7 @@ async def clone(
     guidance: float = Form(2.5),
     speed: float = Form(0.95),
     postprocess_out: bool = Form(True),
+    lufs: float = Form(-14.0),
 ) -> FileResponse:
     ref_path = os.path.join(OUTPUT_DIR, f"ref_{uuid.uuid4().hex[:8]}.wav")
     with open(ref_path, "wb") as fh:
@@ -118,5 +120,5 @@ async def clone(
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     if postprocess_out:
-        path = postprocess(path)
+        path = postprocess(path, target_lufs=lufs)
     return FileResponse(path, media_type="audio/wav", filename=os.path.basename(path))

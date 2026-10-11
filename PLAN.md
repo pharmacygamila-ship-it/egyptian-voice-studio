@@ -10,9 +10,10 @@
 - ✅ تم تثبيت Python 3.12 + بيئة `.venv`.
 - ✅ تم بناء المشروع: 3 محركات (Space / سيرفر GPU / محلي) + مصنع محركات + API + معالجة صوت.
 - ✅ **طبقة نص مصري متقدمة**: أرقام بالكلام (خمسين/ألفين) + نطق الأجنبي + وحدات + تنضيف إيموجي/تطويل (`backend/text/`).
+- ✅ **معالجة صوت بجودة بث**: EBU R128 (-14 LUFS) + de-esser + high-pass + true-peak (`backend/audio/`).
 - ✅ توليد دفعي (`batch_generate.py`) + خيارات مجانية: Colab (`deploy/colab_free_gpu.ipynb`) و Modal (`deploy/modal_app.py`).
 - ✅ تم توليد أول صوت مصري حقيقي: `data/outputs/ads_sample_01_Sayed.wav`.
-- ✅ الاختبارات ناجحة: `tests/selfcheck.py` + `tests/test_text.py` (40 اختبار) + `tests/check_http.py`.
+- ✅ الاختبارات ناجحة: `selfcheck` + `test_text` (40) + `test_audio` (11) + `check_http`.
 - ✅ جاهزية النشر على GPU سحابي: `Dockerfile` + `deploy/`.
 - ⏭️ **القرار:** التشغيل الإنتاجي على **GPU سحابي** (RunPod/Vast) — راجع `deploy/README.md`.
 
@@ -93,10 +94,10 @@ SILMA TTS v1 (عربي/إنجليزي، أقرب للفصحى)، ElevenLabs v3 (
         │
   [4] المحرك → صوت خام 24kHz
         │
-  [5] Post-processing (جودة إعلانية)
-      • Loudness EBU R128 (~ -14 LUFS)
-      • De-esser + EQ + noise gate + silence trim + fade
-      • تصدير WAV 48kHz / MP3
+  [5] Post-processing (جودة إعلانية) — backend/audio/postprocess.py
+      • High-pass (80Hz) + De-esser (5–9kHz)
+      • Loudness EBU R128 (~ -14 LUFS) + True-peak (-1 dBTP)
+      • silence trim + fade + تصدير 48kHz
         │
       الإعلان النهائي
 ```

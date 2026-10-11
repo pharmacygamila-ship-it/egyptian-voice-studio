@@ -24,7 +24,7 @@ import zipfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from backend.audio.postprocess import postprocess  # noqa: E402
+from backend.audio.postprocess import analyze, postprocess  # noqa: E402
 from backend.engine.base import SynthRequest  # noqa: E402
 from backend.engine.factory import build_engine  # noqa: E402
 from backend.text.normalize import normalize_egyptian  # noqa: E402
@@ -83,7 +83,8 @@ def main() -> int:
             path_out = engine.synthesize(req, out)
             postprocess(path_out)
             produced.append(path_out)
-            print(f"     ✓ {path_out}")
+            rep = analyze(path_out)
+            print(f"     ✓ {path_out}  ({rep['lufs']:.1f} LUFS)")
         except Exception as exc:  # noqa: BLE001
             print(f"     ✗ فشل: {exc}")
 

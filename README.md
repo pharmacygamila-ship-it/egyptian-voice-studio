@@ -55,6 +55,7 @@
 ├─ tests/
 │   ├─ selfcheck.py            فحص المكونات
 │   ├─ test_text.py            فحص طبقة النص المصري (أرقام/نطق/تنضيف)
+│   ├─ test_audio.py           فحص المعالجة الصوتية (LUFS/de-esser/high-pass)
 │   └─ check_http.py           فحص السيرفر والعميل
 └─ data/
     ├─ scripts/                نصوص الإعلانات
@@ -176,13 +177,37 @@ normalize_egyptian("WhatsApp", use_lexicon=False)   # → "WhatsApp"
 
 ---
 
+## 🎚️ معالجة الصوت (Mastering) — جودة بث
+
+كل صوت بيخرج من الموديل بيمر على `backend/audio/postprocess.py`:
+
+| الخطوة | الفايدة |
+| --- | --- |
+| تشذيب السكوت | يشيل الفراغات من الأول والآخر |
+| High-pass (80Hz، رتبة 4) | شيل الزمزمة/الدبدبة → صوت أنضف |
+| **De-esser** (5–9kHz) | يهدّي حروف السين/الشين الحادّة |
+| **EBU R128** | جهارة موحّدة **-14 LUFS** (معيار يوتيوب/سبوتيفاي/البث) |
+| True-peak safety | الذروة ≤ **-1 dBTP** (منع التشويش) |
+| Fade + Resample | دخول/خروج ناعم + تصدير 48kHz |
+
+```python
+from backend.audio.postprocess import postprocess, analyze
+postprocess("in.wav", "out.wav", target_lufs=-14.0, target_sr=48000)
+print(analyze("out.wav"))   # {"sr":48000,"seconds":..,"lufs":-14.0,"peak_dbfs":-4.6}
+```
+
+مستويات جاهزة: **-16** بودكاست · **-14** بث/إعلانات (افتراضي) · **-12** إعلان صاخب · **-9** أقصى جهارة.
+متاح من الواجهة ومن الـ API (خانة `lufs`)، وكله محلي من غير أي برنامج خارجي.
+
+---
+
 ## 📋 الخطوات الجاية
 
 1. توفير GPU (محلي أو سحابي) → تشغيل `LocalVoiceTutEngine`.
 2. تشكيل الكلمات الملتبسة (diacritization) + توسيع قاموس الأسماء والبراندات.
-3. إضافة `pyloudnorm` لمعالجة EBU R128 (-14 LUFS).
-4. مسار fine-tune لاستنساخ «نفس الأداء الصوتي» من تسجيلات العميل.
-5. واجهة مستخدم (Gradio / Next.js).
+3. مسار fine-tune لاستنساخ «نفس الأداء الصوتي» من تسجيلات العميل.
+4. LGPL/إضافات: تصدير MP3 + EQ متعدد النطاقات (multiband compressor).
+5. واجهة مستخدم متقدمة (Gradio / Next.js).
 
 ---
 

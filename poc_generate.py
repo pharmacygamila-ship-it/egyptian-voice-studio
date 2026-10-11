@@ -13,7 +13,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from backend.audio.postprocess import postprocess  # noqa: E402
+from backend.audio.postprocess import analyze, postprocess  # noqa: E402
 from backend.engine.base import SynthRequest  # noqa: E402
 from backend.engine.remote_voicetut import RemoteVoiceTutEngine  # noqa: E402
 from backend.engine.server_client import ServerVoiceTutEngine  # noqa: E402
@@ -77,7 +77,12 @@ def main() -> int:
     path = engine.synthesize(req, args.out)
     if not args.no_postprocess:
         path = postprocess(path)
+    rep = analyze(path)
     print(f"[✓] تم الحفظ: {path}")
+    print(
+        f"[i] {rep['seconds']:.2f} ثانية | {rep['lufs']:.1f} LUFS | "
+        f"ذروة {rep['peak_dbfs']:.1f} dB | {int(rep['sr'])}Hz"
+    )
     return 0
 
 
