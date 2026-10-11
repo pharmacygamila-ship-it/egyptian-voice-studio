@@ -1,29 +1,27 @@
-# 🎙️ تطبيق استنساخ الصوت — عامية مصرية
+# 🎙️ استوديو الصوت المصري — عامية مصرية
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pharmacygamila-ship-it/egyptian-voice-studio/blob/main/deploy/colab_free_gpu.ipynb)
 
-تطبيق لإنتاج تعليق صوتي (Voice Over) للإعلانات بالعامية المصرية، مع استنساخ
-صوت العميل — مبني على **[VoiceTut-TTS](https://huggingface.co/mohammedaly22/VoiceTut-TTS)**
+تطبيق لإنتاج تعليق صوتي (Voice Over) للإعلانات بالعامية المصرية + استنساخ صوت العميل،
+مبني على **[VoiceTut-TTS](https://huggingface.co/mohammedaly22/VoiceTut-TTS)**
 (مصري أصلي + code-switching عربي↔إنجليزي + 17 صوت + استنساخ، رخصة Apache-2.0 → تجاري مسموح).
 
-> التفاصيل الكاملة والخطة في [`PLAN.md`](PLAN.md).
+> ⭐ **المسار الرئيسي: كولاب** — المشروع كله بيشتغل من Colab (الموديل + التطبيق الكامل)،
+> من غير GPU محلي ولا سيرفر محلي. الدليل السريع: [`COLAB.md`](COLAB.md) · الخطة: [`PLAN.md`](PLAN.md).
 
 ---
 
 ## ⚡ الحالة الحالية
 
-- ✅ الجهاز: تم تثبيت **Python 3.12** + بيئة افتراضية `.venv`.
-- ✅ محرك أونلاين شغّال (`RemoteVoiceTutEngine`) → يولّد صوت **من غير GPU** (لكن فيه كوتة مجانية).
-- ✅ معمارية **عميل/سيرفر** جاهزة للـ GPU السحابي (`ServerVoiceTutEngine` + `deploy/`).
-- ✅ نموذج صوت جاهز: `data/outputs/ads_sample_01_Sayed.wav`
-- ✅ **عينة بجودة بث كاملة**: `data/outputs/cloud_sample_Sayed.wav` (+ `.mp3`) — **-14.2 LUFS / -1.2 dB** (بعد إضافة `HF_TOKEN` لتخطّي كوتة الـ Space).
-- ✅ تشكيل اختياري (`diacritics.py`) + قاموس نطق موسّع للبراندات والشركات — `tests/test_text.py` (48 اختبار).
-- ✅ **معالجة بجودة بث**: EBU R128 + de-esser + high-pass + **ضغط/EQ متعدد النطاقات** + **limiter (تحديد القمم)** + **تصدير MP3** بدون ffmpeg — `tests/test_audio.py` (34 اختبار).
-- ✅ **واجهة Gradio** للتوليد/الاستنساخ (`frontend/app_gradio.py`) — `tests/test_gradio.py` (16 اختبار).
-- ✅ كل الاختبارات ناجحة: `tests/run_all.py` (selfcheck + text + audio + finetune + gradio + http).
-- ⚠️ كارت الشاشة الحالي (AMD 2GB) مش بينفع → للإنتاج نشغّل على **GPU سحابي** (شوف `deploy/README.md`).
-- ⏳ **توليد عينة جديدة على GPU سحابي**: محتاج إما GPU مدفوع، أو `HF_TOKEN` (لأن كوتة الـ Space المجانية خلصت).
-- ✅ **اتحلّت:** بعد إضافة `HF_TOKEN` اشتغل التوليد على الـ Space، والعينة النهائية `data/outputs/cloud_sample_Sayed.wav` (+`.mp3`).
+- ✅ **المشروع كامل على Colab**: نشغّل الموديل بنفسنا (GPU T4 مجاني) ونفتح التطبيق في المتصفح.
+- ✅ **تطبيق واحد يتحكم في كل حاجة**: توليد · استنساخ · دفعي · فحص نطق · قاموس نطق · إعدادات.
+- ✅ **تطبيع مصري متقدّم** (من حزمة الموديل، بيشتغل CPU): `15` → **خَمَسْتَاشَر**، `3:30` → **تَلَاتَة و نُصّ**، `75$` → **خمسة وسبعين دولار**.
+- ✅ **منع التطبيع المزدوج** (التطبيع مرتين بيشيل التشكيل).
+- ✅ **فاحص النطق (ASR)**: يقارن الناتج بالنص **بالحرف** (`backend/qa/asr_check.py`).
+- ✅ **معالجة بجودة بث**: EBU R128 + de-esser + multi-band + limiter + MP3 بدون ffmpeg.
+- ✅ **قاموس نطق + إعدادات** بيتحكموا من التطبيق ويتحفظوا تلقائيًا.
+- ✅ كل الاختبارات ناجحة: `tests/run_all.py` (selfcheck + text + audio + finetune + gradio + qa + http).
+- 🟡 **فاين-تيون لموديل خاص** (اختياري): `finetune/` — محتاج GPU + تسجيل صوت العميل.
 
 ---
 
@@ -31,6 +29,7 @@
 
 ```
 اعلانات 2/
+├─ COLAB.md                    دليل التشغيل الكامل على Colab (المسار الرئيسي)
 ├─ PLAN.md                     الخطة الكاملة
 ├─ README.md                   الدليل ده
 ├─ LICENSE                     رخصة Apache-2.0
@@ -96,12 +95,18 @@
 
 ## 🚀 التشغيل
 
-### 1) التطبيق — مركز التحكم الكامل ⭐
-كل حاجة من الواجهة: توليد · استنساخ · دفعي · فحص نطق · قاموس · إعدادات (بدون أي كود).
+### ⭐ المسار الرئيسي: كولاب (المشروع كله هناك)
+1. افتح النوتبوك: [deploy/colab_free_gpu.ipynb](https://colab.research.google.com/github/pharmacygamila-ship-it/egyptian-voice-studio/blob/main/deploy/colab_free_gpu.ipynb)
+2. `Runtime` → `Change runtime type` → **T4 GPU** → `Save`
+3. شغّل الخلايا بالترتيب → هيطلعلك **رابط عام** للتطبيق الكامل.
+
+> الخطوات بالتفصيل في **[`COLAB.md`](COLAB.md)**. على كولاب التطبيق بيشتغل بمحرك `local` على GPU.
+
+### 🖥️ التطبيق محليًا (اختياري — للمعاينة بدون GPU)
+> محتاج محرك `remote` أو `server`، لأن الجهاز من غير كارت NVIDIA.
 ```powershell
-.\.venv\Scripts\python.exe frontend\app_gradio.py                 # http://127.0.0.1:7860
-.\.venv\Scripts\python.exe frontend\app_gradio.py --share          # رابط عام مؤقّت
-.\.venv\Scripts\python.exe frontend\app_gradio.py --engine local   # مباشر على GPU (Colab)
+.\.venv\Scripts\python.exe frontend\app_gradio.py            # http://127.0.0.1:7860
+.\.venv\Scripts\python.exe frontend\app_gradio.py --share     # رابط عام مؤقّت
 ```
 
 | التاب | الوظيفة |
@@ -113,20 +118,15 @@
 | 📖 **قاموس النطق** | كلمات/براندات بنطقها المخصوص |
 | ⚙️ **الإعدادات** | نوع المحرك + السيرفر + التوكن + الموديل — **تُحفظ تلقائيًا** |
 
-> على **Colab**: نفس التطبيق شغّال بضغطة واحدة من [`deploy/colab_free_gpu.ipynb`](deploy/colab_free_gpu.ipynb) (مع رابط عام تشتغل منه في المتصفح).
-
-### 2) سيرفر الـ API
+### 🔌 سيرفر الـ API + واجهة الويب (اختياري للمتقدّمين)
+> ده المسار اللي بقى له بديل: **التطبيق** فيه كل حاجة أسهل. موجود لو محتاج تربط نظام تاني بالـ HTTP.
 ```powershell
 .\.venv\Scripts\python.exe -m uvicorn backend.main:app --reload --port 8000
 ```
-- `GET  /health`  → حالة المحرك
-- `GET  /voices`  → الأصوات الجاهزة
-- `POST /tts`     → JSON: `{ "text": "...", "speaker": "Sayed", "multiband": "voice", "fmt": "mp3" }`
-- `POST /clone`   → multipart: `text`, `ref_audio`, `ref_text`, `multiband`, `fmt`
+- `GET  /health` · `GET  /voices` · `POST /tts` · `POST /clone`
+- الواجهة: **http://127.0.0.1:8000/**
 
-ثم افتح الواجهة في المتصفح: **http://127.0.0.1:8000/**
-
-### 3) توليد سريع (سطر أوامر)
+### ⌨️ سطر أوامر (اختياري)
 ```powershell
 .\.venv\Scripts\python.exe poc_generate.py --speaker Sayed --text "أهلاً بيك في تطبيقنا الجديد"
 .\.venv\Scripts\python.exe batch_generate.py --speaker Sayed --multiband voice --mp3 --zip ads.zip
@@ -134,7 +134,7 @@
 ```
 
 > 💡 **نوع المحرك** (من تاب الإعدادات أو `TTS_ENGINE`): `remote` (Space جاهز) · `server` (GPU سحابي بتاعك) · `local` (مباشر على GPU).<br>
-> لو الكوتة المجانية للـ Space خلصت، إمّا تشغّل `local` على Colab/GPU، أو تعمل محرك `server` على RunPod/Vast، أو تحفظ توكن HuggingFace بـ `set_hf_token.py` لكوتة أعلى.
+> على كولاب بنستخدم `local` دايمًا — من غير كوتة ولا سيرفر.
 
 ---
 
