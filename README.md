@@ -14,12 +14,14 @@
 - ✅ محرك أونلاين شغّال (`RemoteVoiceTutEngine`) → يولّد صوت **من غير GPU** (لكن فيه كوتة مجانية).
 - ✅ معمارية **عميل/سيرفر** جاهزة للـ GPU السحابي (`ServerVoiceTutEngine` + `deploy/`).
 - ✅ نموذج صوت جاهز: `data/outputs/ads_sample_01_Sayed.wav`
+- ✅ **عينة بجودة بث كاملة**: `data/outputs/cloud_sample_Sayed.wav` (+ `.mp3`) — **-14.2 LUFS / -1.2 dB** (بعد إضافة `HF_TOKEN` لتخطّي كوتة الـ Space).
 - ✅ تشكيل اختياري (`diacritics.py`) + قاموس نطق موسّع للبراندات والشركات — `tests/test_text.py` (48 اختبار).
-- ✅ **معالجة بجودة بث**: EBU R128 + de-esser + high-pass + **ضغط/EQ متعدد النطاقات** + **تصدير MP3** بدون ffmpeg — `tests/test_audio.py` (28 اختبار).
+- ✅ **معالجة بجودة بث**: EBU R128 + de-esser + high-pass + **ضغط/EQ متعدد النطاقات** + **limiter (تحديد القمم)** + **تصدير MP3** بدون ffmpeg — `tests/test_audio.py` (34 اختبار).
 - ✅ **واجهة Gradio** للتوليد/الاستنساخ (`frontend/app_gradio.py`) — `tests/test_gradio.py` (16 اختبار).
 - ✅ كل الاختبارات ناجحة: `tests/run_all.py` (selfcheck + text + audio + finetune + gradio + http).
 - ⚠️ كارت الشاشة الحالي (AMD 2GB) مش بينفع → للإنتاج نشغّل على **GPU سحابي** (شوف `deploy/README.md`).
 - ⏳ **توليد عينة جديدة على GPU سحابي**: محتاج إما GPU مدفوع، أو `HF_TOKEN` (لأن كوتة الـ Space المجانية خلصت).
+- ✅ **اتحلّت:** بعد إضافة `HF_TOKEN` اشتغل التوليد على الـ Space، والعينة النهائية `data/outputs/cloud_sample_Sayed.wav` (+`.mp3`).
 
 ---
 
@@ -226,7 +228,7 @@ normalize_egyptian("خصم 50", diacritics=True)        # → "خَصْم خمس
 | **De-esser** (5–9kHz) | يهدّي حروف السين/الشين الحادّة |
 | **Multiband** (اختياري) | ضغط/EQ ٣ نطاقات → صوت متوازن وواضح (إحساس «إعلاني») |
 | **EBU R128** | جهارة موحّدة **-14 LUFS** (معيار يوتيوب/سبوتيفاي/البث) |
-| True-peak safety | الذروة ≤ **-1 dBTP** (منع التشويش) |
+| **Limiter** (look-ahead) | تحديد القمم عند ≤ **-1 dBTP** بدون ما نخسر جهارة المقطع |
 | Fade + Resample | دخول/خروج ناعم + تصدير 48kHz |
 
 ```python
@@ -261,9 +263,8 @@ CI بيشغّل كل الاختبارات تلقائياً على كل push (`.g
 
 ## 📋 الخطوات الجاية
 
-1. ⏳ **توليد عينة على GPU سحابي** — محتاج واحد من:
-   - **HF token** (أسرع): `$env:HF_TOKEN="hf_..."` ثم `poc_generate.py` (بدون GPU).
-   - **Colab/Kaggle مجاني**: افتح `deploy/colab_free_gpu.ipynb`.
+1. ✅ **عينة على GPU سحابي**: اتعملت عبر `HF_TOKEN` (كوتة أعلى) → `data/outputs/cloud_sample_Sayed.wav` (+`.mp3`).
+   - **Colab/Kaggle مجاني** (للدُفعات): `deploy/colab_free_gpu.ipynb`.
    - **Modal** (`$30` رصيد مجاني): `modal run deploy/modal_app.py`.
    - **GPU مدفوع (الإنتاج)**: `deploy/setup_gpu.sh` + `deploy/run_server.sh` (شوف `deploy/README.md`).
 2. ✅ قاموس البراندات/الشركات المصرية + تشكيل الكلمات الملتبسة (`backend/text/`).

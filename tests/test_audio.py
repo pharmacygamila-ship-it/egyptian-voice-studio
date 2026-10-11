@@ -26,8 +26,10 @@ from backend.audio.postprocess import (  # noqa: E402
     compress_band,
     deess,
     highpass,
+    limiter,
     measure_loudness,
     multiband_compressor,
+    normalize_and_limit,
     peak_safety,
     postprocess,
     split_bands,
@@ -162,6 +164,29 @@ out_mb = os.path.join(tmp, "out_mb.wav")
 postprocess(in_path, out_mb, multiband="punch")
 rep_mb = analyze(out_mb)
 check("postprocess(multiband=punch): الجهارة ~ -14 LUFS", -15.0 <= rep_mb["lufs"] <= -13.0)
+
+# ── 8.5) الليميتر مع قمم عالية (crest عالي) ─────────────────────────────
+spiky = speech_like(sr0).copy()
+_idx = np.linspace(0, spiky.size - 1, 12).astype(int)
+spiky[_idx] += 3.0 * np.sign(spiky[_idx] + 1e-9)
+
+ceil = 10 ** (-1.0 / 20)
+lim = limiter(spiky, sr0, ceiling_db=-1.0)
+check("limiter: الذروة ≤ السقف", float(np.max(np.abs(lim))) <= ceil + 1e-6)
+check("limiter: بحدّ القمم مش يصغّر الكل", rms(lim) > rms(peak_safety(spiky, -1.0)))
+
+nl = normalize_and_limit(spiky, sr0, -14.0, -1.0)
+check("normalize_and_limit: الجهارة قربت -14", abs(measure_loudness(nl, sr0) + 14.0) < 1.5)
+check("normalize_and_limit: الذروة ≤ -1dB", float(np.max(np.abs(nl))) <= 10 ** (-0.9 / 20))
+
+sp_path = os.path.join(tmp, "spiky.wav")
+sf.write(sp_path, spiky, sr0)
+out_sp = os.path.join(tmp, "spiky_out.wav")
+postprocess(sp_path, out_sp, target_lufs=-14.0)
+rep_sp = analyze(out_sp)
+check("postprocess (crest عالي): الجهارة ≥ -15.5", rep_sp["lufs"] >= -15.5)
+check("postprocess (crest عالي): الذروة ≤ -1dB", rep_sp["peak_dbfs"] <= -1.0)
+print(f"    -> قمم عالية: {rep_sp['lufs']:.1f} LUFS / {rep_sp['peak_dbfs']:.1f} dB")
 
 # ── 9) تصدير MP3 ─────────────────────────────────────────────────────────
 mp3_path = export(out_path, "mp3", bitrate=192)

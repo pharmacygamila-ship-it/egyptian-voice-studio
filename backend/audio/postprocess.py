@@ -6,7 +6,7 @@
     3) De-esser   → تقليل حروف السين/الشين الحادّة (5–9kHz)
     4) Multiband  → ضغط/EQ متعدد النطاقات (اختياري: voice/warm/punch/broadcast)
     5) EBU R128   → تطبيع الجهارة لـ ~ -14 LUFS (معيار البث/يوتيوب/سبوتيفاي)
-    6) True-peak  → تأمين الذروة عند -1 dBTP (منع التشويش)
+    6) Limiter    → تحديد القمم عند -1 dBTP (بدل تصغير المقطع بالكامل)
     7) Fade in/out
     8) (اختياري) Resample لـ 48kHz للإنتاج النهائي
 
@@ -19,8 +19,8 @@ import math
 import numpy as np
 import pyloudnorm as pyln
 import soundfile as sf
-from scipy.ndimage import uniform_filter1d
-from scipy.signal import butter, lfilter, resample_poly, sosfilt, sosfiltfilt
+from scipy.ndimage import maximum_filter1d, uniform_filter1d
+from scipy.signal import butter, lfilter, lfilter_zi, resample_poly, sosfilt, sosfiltfilt
 
 # ── 1) تنضيف ──────────────────────────────────────────────────────────────
 
@@ -255,7 +255,7 @@ def normalize_loudness(data: np.ndarray, sr: int, target_lufs: float = -14.0) ->
     return data * (10.0 ** ((target_lufs - loud) / 20.0))
 
 
-# ── 5) True-peak safety ───────────────────────────────────────────────────
+# ── 5) True-peak safety + Limiter ─────────────────────────────────────────
 
 
 def peak_safety(data: np.ndarray, ceiling_db: float = -1.0) -> np.ndarray:
@@ -264,6 +264,66 @@ def peak_safety(data: np.ndarray, ceiling_db: float = -1.0) -> np.ndarray:
     peak = float(np.max(np.abs(data))) if data.size else 0.0
     if peak > ceiling > 0:
         data = data * (ceiling / peak)
+    return data
+
+
+LIMITER_MARGIN_DB = 0.2  # هامش أمان للقمم اللي بين العيّنات (true-peak)
+
+
+def limiter(
+    data: np.ndarray,
+    sr: int,
+    ceiling_db: float = -1.0,
+    release_ms: float = 90.0,
+    lookahead_ms: float = 1.5,
+) -> np.ndarray:
+    """ليميتر بنظرة لقدّام: بيعمل **تحديد** للقمم العالية بدل ما يصغّر الصوت كله.
+
+    الفرق عن `peak_safety`: ده بيمسك القمم المتفرقة (plosives/نقرات) ويحدّها
+    للسقف بدل ما ينزّل مستوى المقطع بالكامل — فالجهارة الهدف توصل من غير ما
+    تخسر 6dB.
+    """
+    if data.size == 0:
+        return data
+    ceiling = 10.0 ** (ceiling_db / 20.0)
+    if ceiling <= 0:
+        return data
+
+    x = np.asarray(data, dtype=np.float64)
+    peak = np.abs(x) if x.ndim == 1 else np.max(np.abs(x), axis=1)
+
+    win = max(int(sr * lookahead_ms / 1000.0), 1)
+    env = maximum_filter1d(peak, size=win, mode="nearest")
+    target = np.minimum(1.0, ceiling / np.maximum(env, 1e-12))
+
+    # مهاجمة سريعة (نزول) + تحرير بطيء (طلوع) عبر فلترَين one-pole
+    a = math.exp(-1.0 / (sr * 0.0005))
+    r = math.exp(-1.0 / (sr * max(release_ms, 1.0) / 1000.0))
+    b_a, z_a = np.array([1.0 - a]), lfilter_zi([1.0 - a], [1.0, -a]) * target[0]
+    b_r, z_r = np.array([1.0 - r]), lfilter_zi([1.0 - r], [1.0, -r]) * target[0]
+    fast, _ = lfilter(b_a, [1.0, -a], target, zi=z_a)
+    slow, _ = lfilter(b_r, [1.0, -r], target, zi=z_r)
+
+    gain = np.minimum(np.minimum(fast, slow), target)
+    y = x * gain if x.ndim == 1 else x * gain[:, None]
+    return np.clip(y, -ceiling, ceiling)
+
+
+def normalize_and_limit(
+    data: np.ndarray,
+    sr: int,
+    target_lufs: float = -14.0,
+    ceiling_db: float = -1.0,
+    iterations: int = 3,
+) -> np.ndarray:
+    """يطبّع الجهارة للهدف ويحدّ القمم بـ limiter لحد ما يقرب للهدف."""
+    if data.size == 0:
+        return data
+    for _ in range(max(int(iterations), 1)):
+        data = normalize_loudness(data, sr, target_lufs)
+        data = limiter(data, sr, ceiling_db=ceiling_db - LIMITER_MARGIN_DB)
+        if measure_loudness(data, sr) >= target_lufs - 0.3:
+            break
     return data
 
 
@@ -329,12 +389,15 @@ def postprocess(
     if multiband:
         data = multiband_compressor(data, sr, multiband)
     if target_lufs is not None:
-        data = normalize_loudness(data, sr, target_lufs)
-    data = peak_safety(data, true_peak_db)
+        # تطبيع الجهارة + تحديد القمم (limiter) بدل تصغير المقطع بالكامل
+        data = normalize_and_limit(data, sr, target_lufs, true_peak_db)
+    else:
+        data = limiter(data, sr, ceiling_db=true_peak_db - LIMITER_MARGIN_DB)
     data = apply_fade(data, sr, fade_ms)
     if target_sr:
         data, sr = resample_audio(data, sr, target_sr)
 
+    data = peak_safety(data, true_peak_db)
     data = np.clip(data, -1.0, 1.0)
     out_path = out_path or in_path
     sf.write(out_path, data, sr)
