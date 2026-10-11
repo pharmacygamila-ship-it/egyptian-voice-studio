@@ -11,9 +11,10 @@
 - ✅ تم بناء المشروع: 3 محركات (Space / سيرفر GPU / محلي) + مصنع محركات + API + معالجة صوت.
 - ✅ **طبقة نص مصري متقدمة**: أرقام بالكلام (خمسين/ألفين) + نطق الأجنبي + وحدات + تنضيف إيموجي/تطويل (`backend/text/`).
 - ✅ **معالجة صوت بجودة بث**: EBU R128 (-14 LUFS) + de-esser + high-pass + true-peak (`backend/audio/`).
+- ✅ **مسار fine-tune**: تجهيز داتاسِت (مختبر) + سكربت LoRA + دليل تسجيل (`finetune/`).
 - ✅ توليد دفعي (`batch_generate.py`) + خيارات مجانية: Colab (`deploy/colab_free_gpu.ipynb`) و Modal (`deploy/modal_app.py`).
 - ✅ تم توليد أول صوت مصري حقيقي: `data/outputs/ads_sample_01_Sayed.wav`.
-- ✅ الاختبارات ناجحة: `selfcheck` + `test_text` (40) + `test_audio` (11) + `check_http`.
+- ✅ الاختبارات ناجحة: `selfcheck` + `test_text` (48) + `test_audio` (11) + `test_finetune` (17) + `check_http`.
 - ✅ جاهزية النشر على GPU سحابي: `Dockerfile` + `deploy/`.
 - ⏭️ **القرار:** التشغيل الإنتاجي على **GPU سحابي** (RunPod/Vast) — راجع `deploy/README.md`.
 

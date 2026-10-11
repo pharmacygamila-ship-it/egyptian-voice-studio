@@ -52,10 +52,16 @@
 │   ├─ docker-compose.yml
 │   ├─ colab_free_gpu.ipynb    Notebook للـ Colab المجاني
 │   └─ modal_app.py            نشر على Modal (رصيد مجاني)
+├─ finetune/
+│   ├─ README.md               مسار «نفس الأداء» (Zero-shot + Fine-tune)
+│   ├─ RECORDING.md            دليل تسجيل صوت العميل
+│   ├─ prepare_dataset.py      تجهيز داتاسِت التدريب
+│   └─ train_lora.py           سكربت التدريب (LoRA)
 ├─ tests/
 │   ├─ selfcheck.py            فحص المكونات
 │   ├─ test_text.py            فحص طبقة النص المصري (أرقام/نطق/تنضيف)
 │   ├─ test_audio.py           فحص المعالجة الصوتية (LUFS/de-esser/high-pass)
+│   ├─ test_finetune.py        فحص تجهيز داتاسِت fine-tune
 │   └─ check_http.py           فحص السيرفر والعميل
 └─ data/
     ├─ scripts/                نصوص الإعلانات
