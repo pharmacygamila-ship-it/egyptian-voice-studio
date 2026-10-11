@@ -18,7 +18,7 @@ from backend.audio.postprocess import analyze, postprocess  # noqa: E402
 from backend.engine.base import SynthRequest  # noqa: E402
 from backend.engine.remote_voicetut import RemoteVoiceTutEngine  # noqa: E402
 from backend.engine.server_client import ServerVoiceTutEngine  # noqa: E402
-from backend.text.normalize import normalize_egyptian  # noqa: E402
+from backend.text.normalize import normalize_for_tts  # noqa: E402
 
 
 def main() -> int:
@@ -54,7 +54,7 @@ def main() -> int:
     else:
         ap.error("لازم تحدد --text أو --text-file")
 
-    clean = normalize_egyptian(text, diacritics=args.diacritics) if not args.no_normalize else text
+    clean = normalize_for_tts(text, diacritics=args.diacritics) if not args.no_normalize else text
     print(f"[i] الصوت: {args.speaker or args.ref_audio}")
     print(f"[i] النص: {clean[:120]}{'...' if len(clean) > 120 else ''}")
 
@@ -77,7 +77,7 @@ def main() -> int:
         steps=args.steps,
         guidance=args.guidance,
         speed=args.speed,
-        normalize=not args.no_normalize,
+        normalize=False,
     )
 
     print("[i] جاري التوليد (الـ Space المجاني ممكن يستغرق شوية)...")

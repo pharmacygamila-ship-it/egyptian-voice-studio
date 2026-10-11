@@ -37,6 +37,7 @@ class LocalVoiceTutEngine(TTSEngine):
             num_step=req.steps,
             guidance_scale=req.guidance,
             speed=req.speed,
+            normalize=req.normalize,
         )
         if req.ref_audio:
             self.tts.synthesize(

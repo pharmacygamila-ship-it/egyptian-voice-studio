@@ -13,7 +13,10 @@ lameenc>=1.7
 # ── واجهة Gradio (اختيارية) ──────────────────────────────────────────────
 gradio>=4.44
 
+# ── التطبيع المصري المتقدّم (CPU-only، من غير torch) ─────────────────────
+# طبقة تطبيع VoiceTut: أرقام/تواريخ/أوقات بالعامية + تشكيل + أسماء.
+voicetut-tts>=0.1.1
+
 # ── اختياري: للتشغيل المحلي على GPU (شيل التعليق لما يتوفر كارت NVIDIA) ──
 # torch --index-url https://download.pytorch.org/whl/cu121
 # git+https://github.com/k2-fsa/OmniVoice.git
-# voicetut-tts

@@ -19,7 +19,7 @@ from backend.audio.export import export, media_type
 from backend.audio.postprocess import postprocess
 from backend.engine.base import SynthRequest, TTSEngine
 from backend.engine.factory import build_engine
-from backend.text.normalize import normalize_egyptian
+from backend.text.normalize import normalize_for_tts
 
 OUTPUT_DIR = os.getenv("TTS_OUTPUT_DIR", os.path.join("data", "outputs"))
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -87,7 +87,7 @@ def _finish(path: str, fmt: str) -> FileResponse:
 @app.post("/tts", dependencies=[Depends(require_token)])
 def tts(body: TTSBody) -> FileResponse:
     if body.normalize:
-        text = normalize_egyptian(body.text, diacritics=body.diacritics)
+        text = normalize_for_tts(body.text, diacritics=body.diacritics)
     else:
         text = body.text
     out = os.path.join(OUTPUT_DIR, f"tts_{uuid.uuid4().hex[:8]}.wav")
@@ -98,7 +98,7 @@ def tts(body: TTSBody) -> FileResponse:
         steps=body.steps,
         guidance=body.guidance,
         speed=body.speed,
-        normalize=body.normalize,
+        normalize=False,
     )
     try:
         path = engine.synthesize(req, out)
@@ -130,12 +130,13 @@ async def clone(
 
     out = os.path.join(OUTPUT_DIR, f"clone_{uuid.uuid4().hex[:8]}.wav")
     req = SynthRequest(
-        text=normalize_egyptian(text, diacritics=diacritics) if normalize else text,
+        text=normalize_for_tts(text, diacritics=diacritics) if normalize else text,
         ref_audio=ref_path,
         ref_text=ref_text,
         steps=steps,
         guidance=guidance,
         speed=speed,
+        normalize=False,
     )
     try:
         path = engine.clone(req, out)

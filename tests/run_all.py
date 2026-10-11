@@ -15,6 +15,7 @@ TESTS = [
     "test_audio.py",
     "test_finetune.py",
     "test_gradio.py",
+    "test_qa.py",
     "check_http.py",
 ]
 

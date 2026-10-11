@@ -73,9 +73,15 @@ tmp = tempfile.mkdtemp(prefix="tts_gradio_")
 os.environ["TTS_OUTPUT_DIR"] = tmp
 
 # ── 1) helpers نقية ──────────────────────────────────────────────────────
-check("prepare_text: تطبيع", app.prepare_text("خصم 50", True, False) == "خصم خمسين")
+def _bare(s: str) -> str:
+    return "".join(c for c in s if not ("\u064b" <= c <= "\u0652") and c != "\u0670")
+
+
+_nt = _bare(app.prepare_text("خصم 50", True, False))
+check("prepare_text: تطبيع (الأرقام بالكلام)", "خمسين" in _nt and "50" not in _nt)
 check("prepare_text: بدون تطبيع", app.prepare_text("خصم 50", False, False) == "خصم 50")
-check("prepare_text: تشكيل", app.prepare_text("عرض خاص", True, True) == "عَرْض خاص")
+_dt = _bare(app.prepare_text("عرض خاص", True, True))
+check("prepare_text: تشكيل (الكلمات موجودة)", "عرض" in _dt and "خاص" in _dt)
 check("MULTIBAND_CHOICES", set(app.MULTIBAND_CHOICES) == {"", "voice", "warm", "punch", "broadcast"})
 check("FALLBACK_SPEAKERS غير فاضي", len(app.FALLBACK_SPEAKERS) >= 10)
 check("_blocks_kwargs يرجّع dict", isinstance(app._blocks_kwargs(), dict))

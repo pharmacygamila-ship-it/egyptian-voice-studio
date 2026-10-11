@@ -169,9 +169,25 @@ $env:TTS_SERVER_TOKEN = "التوكن"
 **التفاصيل الكاملة في [`deploy/README.md`](deploy/README.md)** (RunPod + Vast.ai + Docker).
 
 ### 🆓 مجاناً (بدون بطاقة)
-- **Colab / Kaggle** — GPU T4 مجاني للتوليد الدفعي → `deploy/colab_free_gpu.ipynb`
+- **Colab / Kaggle** — GPU T4 مجاني، والموديل **ملكنا** (من غير كوتة Space) → `deploy/colab_free_gpu.ipynb`
 - **Modal** — $30/شهر رصيد لسيرفر API دائم → `deploy/modal_app.py`
-- **HF Space** — تجارب سريعة (كوتة محدودة) → المحرك `remote`
+- **HF Space** — تجارب سريعة (كوتة ZeroGPU محدودة) → المحرك `remote`
+
+### 💻 نبني نماذجنا بنفسنا (مش محتاجين Space)
+عشان نبقى مستقلين تمامًا عن أي سيرفر عام:
+```bash
+# على أي جهاز فيه GPU (أو Colab):
+pip install torch --index-url https://download.pytorch.org/whl/cu121
+pip install git+https://github.com/k2-fsa/OmniVoice.git
+pip install voicetut-tts
+
+# بعدين استخدم المحرك المحلي:
+TTS_ENGINE=local .venv/bin/python -m uvicorn backend.main:app --port 8000
+# أو من نفس المشروع:
+.venv/Scripts/python poc_generate.py --engine local --speaker Sayed --text "عرض النهاردة"
+```
+الموديل **2.45GB** فقط (~3GB VRAM) وApache-2.0 → تجاري. وللفاين-تيون على دومين/صوت معيّن
+شوف [`finetune/README.md`](finetune/README.md) (نفس مسار OmniVoice).
 
 ### 🔁 توليد دفعي
 ```powershell
@@ -181,39 +197,66 @@ $env:TTS_SERVER_TOKEN = "التوكن"
 سمّي الملف `ad2__Yasmin.txt` لو عايز صوت مختلف لكل إعلان.
 
 ### كوتة الـ Space المجاني
-النسخة المجانية (ZeroGPU) بكوتة محدودة وممكن ترفض الطلبات. حلول:
-- تعيين `HF_TOKEN` (توكن HuggingFace) → كوتة أعلى.
-- تشغيل محرك محلي على GPU.
+النسخة المجانية (ZeroGPU) بكوتة محدودة وممكن ترفض الطلبات (حصل معانا). حلول:
+- تشغيل محرك محلي على GPU (**مستحسن**) — Colab مجاناً أو GPU مستأجر → `TTS_ENGINE=local`.
+- تعيين `HF_TOKEN` (توكن HuggingFace) → كوتة أعلى على الـ Space.
 - استئجار GPU سحابي (RunPod / Vast.ai) وتشغيل `LocalVoiceTutEngine`.
 
 ---
 
 ## 🗣️ طبقة النص المصري
 
-كل نص بيمر على `backend/text/normalize.py` قبل التوليد:
+فيه **طبقتين** للتطبيع:
+
+**1) الطبقة الحديثة `normalize_for_tts`** (الافتراضية للـ API/CLI/الواجهة): مبنية على حزمة
+`voicetut-tts` — نفس طبقة التطبيع اللي الموديل اتدرّب عليها، وبتشتغل **CPU-only** (من غير torch).
+بتدّي نطق أدق للعامية:
 
 | الخطوة | مثال |
 | --- | --- |
-| أرقام شرقية → غربية | `٥٠` → `50` |
-| أرقام → كلام مصري | `50` → **خمسين** · `2026` → **ألفين وستة وعشرين** |
-| أرقام طويلة (تليفون) رقم رقم | `01001234567` → **صفر واحد صفر…** |
-| أوقات / كسور | `3:30` → **تلاتة وتلاتين** · `3.5` → **تلاتة فاصلة خمسة** |
-| نسب | `50%` → **خمسين في المية** |
-| نطق الأجنبي | `WhatsApp` → **واتساب** · `order` → **أوردر** |
-| وحدات ملزوقة | `5kg` → **خمسة كيلوجرام** |
-| تشكيل كلمات ملتبسة (اختياري) | `عرض` → **عَرْض** · `خصم` → **خَصْم** |
-| تنضيف | إيموجي + تطويل (`حلوووو` → `حلو`) |
+| أرقام → كلام مصري مشكول | `50` → **خَمْسِين** · `15` → **خَمَسْتَاشَر** |
+| أوقات بالعامية | `3:30` → **تَلَاتَة و نُصّ** · `7:45` → **تَمَانْيَه الا رُبع** |
+| عملات/نِسب | `75$` → **خمسة وسبعين دولار** · `25%` → **خَمْسَه وعِشْرين في المية** |
+| تليفون ميل/روابط | `01147450629` → **زيرو حْدَاشَر…** · `a.b@gmail.com` → **a dot b at gmail dot com** |
+| أسماء إنجليزية | `Ahmed` → **أحمد** |
+| code-switching | `عندي meeting بكرة` → الإنجليزي بيفضل زي ما هو (الموديل بينطقه صح) |
 
-التحكم:
+**2) الطبقة المدمجة `normalize_egyptian`** (fallback لما الحزمة مش متثبّتة).
+
+التحكم (نفس الواجهة):
 ```python
-from backend.text.normalize import normalize_egyptian
-normalize_egyptian("خصم 50%")                        # → "خصم خمسين في المية"
-normalize_egyptian("٥٠", numbers=False)              # → "50"  (من غير كلام)
-normalize_egyptian("WhatsApp", use_lexicon=False)    # → "WhatsApp"
-normalize_egyptian("خصم 50", diacritics=True)        # → "خَصْم خمسين"
+from backend.text.normalize import normalize_for_tts
+normalize_for_tts("خصم 50%")                    # → "خصم خَمْسِين في المية"
+normalize_for_tts("خصم 50", diacritics=False)   # الأرقام بتفضل مشكولة للضرورة
+normalize_for_tts("...", modern=False)          # يجبر الطبقة المدمجة
+normalize_for_tts("...", lexicon={"Nescafe": "نِسْكافِيه"})  # نطق مخصوص
 ```
 
+> ⚠️ مهم: بنمرّر `normalize=False` للمحرك بعد ما نطبّع، لأن **تطبيع الموديل مرتين بيشيل التشكيل**.
+
 **تعديل القواميس:** `backend/text/lexicon.py` (كلمات أجنبية/وحدات) و `backend/text/numbers.py` (صيغ الأرقام) و `backend/text/diacritics.py` (التشكيل).
+
+---
+
+## 🔎 فاحص النطق (ASR) — نتأكد إن مفيش أحرف ناقصة/زيادة
+
+بعد التوليد، نقدر نسمّع الناتج ونقارنه بالنص المتوقّع **موضوعيًا**:
+
+```bash
+.venv\Scripts\python.exe -m backend.qa.asr_check out.wav "وريحة تجنن"
+```
+
+بيطلّع نسبة تطابق + كل خطأ بالحرف:
+```
+نسبة التطابق: 88.0%
+المتوقّع : ... وريحه تجنن ...
+المسموع : ... وريحه جنن ...
+⚠️ الأخطاء:
+  - خطأ: «تجنن» → «جنن»  [-ت]
+```
+> بيستخدم `faster-whisper` محلي (CPU). ملاحظة: الـ ASR بيصحّح النطق المصري للمعيارية (مثلاً
+> «قهوة» بنطقها المصري **"أَهْوَه"** = ق مصري = همزة)، فنتايج القرب من المعيارية تعتبر **مقبولة**.
+> للتحقق الأدق للعامية استخدم نموذج **[QwenCleo-ASR](https://github.com/MohammedAly22/qwencleo-asr)** المصري.
 
 ---
 

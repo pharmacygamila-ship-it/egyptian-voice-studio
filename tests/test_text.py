@@ -115,5 +115,29 @@ check(
     normalize_egyptian("خصم 50") == "خصم خمسين",
 )
 
+# ── 7) الطبقة الحديثة (normalize_for_tts) ────────────────────────────────
+from backend.text.normalize import normalize_for_tts  # noqa: E402
+from backend.text.voicetut_norm import available as vt_available  # noqa: E402
+
+
+def _bare(s: str) -> str:
+    """يشيل التشكيل للمقارنة بالمعنى."""
+    return "".join(c for c in s if not ("\u064b" <= c <= "\u0652") and c != "\u0670")
+
+
+_modern = _bare(normalize_for_tts("خصم 50 جنيه", modern=True))
+check("normalize_for_tts: الأرقام بالكلام", "خمسين" in _modern and "50" not in _modern)
+check(
+    "normalize_for_tts: modern=False = المطبّع المدمج",
+    normalize_for_tts("خصم 50 جنيه", modern=False, diacritics=False) == "خصم خمسين جنيه",
+)
+check("normalize_for_tts: نص فاضي", normalize_for_tts("") == "")
+check(
+    "normalize_for_tts: اتفاق مع voicetut لما تكون متثبّتة",
+    (normalize_for_tts("عرض 25%", modern=True) == "عرض خَمْسَه وعِشْرين في المية")
+    if vt_available()
+    else True,
+)
+
 print(f"\n==> {total} اختبار |", "كله تمام ✅" if ok else "فيه فشل ❌")
 raise SystemExit(0 if ok else 1)

@@ -28,7 +28,7 @@ from backend.audio.export import export  # noqa: E402
 from backend.audio.postprocess import analyze, postprocess  # noqa: E402
 from backend.engine.base import SynthRequest  # noqa: E402
 from backend.engine.factory import build_engine  # noqa: E402
-from backend.text.normalize import normalize_egyptian  # noqa: E402
+from backend.text.normalize import normalize_for_tts  # noqa: E402
 
 
 def parse_name(path: str) -> tuple[str, str | None]:
@@ -74,7 +74,7 @@ def main() -> int:
         name, speaker = parse_name(path)
         speaker = speaker or args.speaker
         with open(path, encoding="utf-8") as fh:
-            text = normalize_egyptian(fh.read().strip(), diacritics=args.diacritics)
+            text = normalize_for_tts(fh.read().strip(), diacritics=args.diacritics)
         out = os.path.join(args.out, f"{name}.wav")
 
         if args.dry_run:
@@ -87,6 +87,7 @@ def main() -> int:
             req = SynthRequest(
                 text=text, speaker=speaker, steps=args.steps,
                 guidance=args.guidance, speed=args.speed,
+                normalize=False,
             )
             path_out = engine.synthesize(req, out)
             postprocess(path_out, multiband=args.multiband)

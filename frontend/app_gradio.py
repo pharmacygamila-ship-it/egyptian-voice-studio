@@ -21,7 +21,7 @@ from backend.audio.export import export  # noqa: E402
 from backend.audio.postprocess import analyze, postprocess  # noqa: E402
 from backend.engine.base import SynthRequest  # noqa: E402
 from backend.engine.factory import build_engine  # noqa: E402
-from backend.text.normalize import normalize_egyptian  # noqa: E402
+from backend.text.normalize import normalize_for_tts  # noqa: E402
 
 OUTPUT_DIR = os.getenv("TTS_OUTPUT_DIR", os.path.join(ROOT, "data", "outputs"))
 MULTIBAND_CHOICES = ["", "voice", "warm", "punch", "broadcast"]
@@ -87,7 +87,7 @@ def list_speakers() -> list[str]:
 
 def prepare_text(text: str, normalize: bool, diacritics: bool) -> str:
     """تطبيع النص المصري (نفس منطق الـ API)."""
-    return normalize_egyptian(text, diacritics=diacritics) if normalize else text
+    return normalize_for_tts(text, diacritics=diacritics) if normalize else text
 
 
 def _out_path(prefix: str) -> str:
@@ -121,7 +121,7 @@ def synth_ui(
     out = _out_path("tts")
     req = SynthRequest(
         text=clean, speaker=speaker, steps=int(steps),
-        guidance=float(guidance), speed=float(speed), normalize=normalize,
+        guidance=float(guidance), speed=float(speed), normalize=False,
     )
     try:
         path = get_engine().synthesize(req, out)
@@ -146,6 +146,7 @@ def clone_ui(
     req = SynthRequest(
         text=clean, ref_audio=ref_audio, ref_text=ref_text or "",
         steps=int(steps), guidance=float(guidance), speed=float(speed),
+        normalize=False,
     )
     try:
         path = get_engine().clone(req, out)

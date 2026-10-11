@@ -85,7 +85,7 @@ class VoiceServer:
 
         from backend.audio.export import export, media_type
         from backend.audio.postprocess import postprocess
-        from backend.text.normalize import normalize_egyptian
+        from backend.text.normalize import normalize_for_tts
 
         out_dir = "/tmp/outputs"
         os.makedirs(out_dir, exist_ok=True)
@@ -121,12 +121,13 @@ class VoiceServer:
         def tts(body: Body) -> FileResponse:
             out = os.path.join(out_dir, f"{uuid.uuid4().hex[:8]}.wav")
             text = (
-                normalize_egyptian(body.text, diacritics=body.diacritics)
+                normalize_for_tts(body.text, diacritics=body.diacritics)
                 if body.normalize else body.text
             )
             self.tts.synthesize(
                 text, speaker=body.speaker, output=out,
                 num_step=body.steps, guidance_scale=body.guidance, speed=body.speed,
+                normalize=False,
             )
             if body.postprocess:
                 out = postprocess(out, target_lufs=body.lufs, multiband=body.multiband)
@@ -153,12 +154,13 @@ class VoiceServer:
                 fh.write(await ref_audio.read())
             out = os.path.join(out_dir, f"{uuid.uuid4().hex[:8]}.wav")
             text = (
-                normalize_egyptian(text, diacritics=diacritics)
+                normalize_for_tts(text, diacritics=diacritics)
                 if normalize else text
             )
             self.tts.synthesize(
                 text, ref_audio=ref, ref_text=ref_text, output=out,
                 num_step=steps, guidance_scale=guidance, speed=speed,
+                normalize=False,
             )
             if postprocess_out:
                 out = postprocess(out, target_lufs=lufs, multiband=multiband)

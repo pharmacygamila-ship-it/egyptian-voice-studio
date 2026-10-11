@@ -15,6 +15,7 @@ from __future__ import annotations
 import re
 
 from . import numbers as _numbers
+from . import voicetut_norm as _vt_norm
 from .diacritics import apply_diacritics
 from .lexicon import apply_lexicon, expand_units
 
@@ -134,6 +135,60 @@ def normalize_egyptian(
     out = _MULTI_NEWLINE.sub("\n", out)
 
     return out.strip()
+
+
+def normalize_for_tts(
+    text: str,
+    *,
+    diacritics: bool = True,
+    numbers: bool = True,
+    names: bool = True,
+    lexicon: dict[str, str] | None = None,
+    clean: bool = True,
+    modern: bool | None = None,
+) -> str:
+    """التطبيع النهائي قبل ما النص يروح للمحرك.
+
+    لو حزمة `voicetut-tts` متثبّتة بنستخدم طبقتها المتقدّمة (تطبيع أرقام/تواريخ/
+    أوقات + تشكيل + أسماء)، وهي نفس الطبقة اللي الموديل اتدرّب عليها — وده أضمن
+    للنطق. ولو مش متثبّتة بنرجع للمطبّع المدمج.
+
+    المعاملات:
+        diacritics : يشكّل الكلمات (الافتراضي مفعّل في الطبقة الجديدة).
+        numbers    : يحوّل الأرقام لكلام مصري.
+        names      : يحوّل الأسماء الإنجليزية المعروفة لعربي.
+        lexicon    : تجاوزات إضافية {"Ziad": "زياد"}.
+        clean      : يشيل الإيموجي/التطويل/الحروف المكرّرة.
+        modern     : None = تلقائي (لو الحزمة متاحة)، True/False للإجبار.
+    """
+    if not text:
+        return ""
+
+    if modern is None:
+        modern = _vt_norm.available()
+
+    if modern:
+        out = text
+        if clean:
+            out = out.replace("\u0640", "")
+            out = _EMOJI.sub("", out)
+            out = _ELONGATION.sub(r"\1", out)
+        out = _vt_norm.normalize(
+            out,
+            diacritics=diacritics,
+            numbers=numbers,
+            names=names,
+            lexicon=lexicon,
+        )
+        out = _WHITESPACE.sub(" ", out)
+        return out.strip()
+
+    return normalize_egyptian(
+        text,
+        numbers=numbers,
+        diacritics=diacritics,
+        clean=clean,
+    )
 
 
 def split_sentences(text: str, max_chars: int = 300) -> list[str]:
