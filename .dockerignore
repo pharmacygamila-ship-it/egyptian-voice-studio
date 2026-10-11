@@ -7,3 +7,4 @@ models/
 outputs/
 .env
 .git/
+dist/

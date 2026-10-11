@@ -23,6 +23,7 @@ RUN pip install --no-cache-dir git+https://github.com/k2-fsa/OmniVoice.git \
     && pip install --no-cache-dir voicetut-tts
 
 COPY backend ./backend
+COPY frontend ./frontend
 COPY requirements.txt ./requirements.txt
 
 RUN mkdir -p /models /outputs

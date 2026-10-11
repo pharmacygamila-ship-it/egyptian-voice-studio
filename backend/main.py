@@ -43,6 +43,7 @@ class TTSBody(BaseModel):
     guidance: float = Field(2.5, ge=1.0, le=5.0)
     speed: float = Field(0.95, ge=0.5, le=2.0)
     normalize: bool = True
+    diacritics: bool = Field(False, description="تشكيل الكلمات الملتبسة (اختياري)")
     postprocess: bool = True
     lufs: float = Field(-14.0, ge=-24.0, le=-6.0, description="جهارة الهدف (EBU R128)")
 
@@ -71,7 +72,10 @@ def voices() -> list[dict]:
 
 @app.post("/tts", dependencies=[Depends(require_token)])
 def tts(body: TTSBody) -> FileResponse:
-    text = normalize_egyptian(body.text) if body.normalize else body.text
+    if body.normalize:
+        text = normalize_egyptian(body.text, diacritics=body.diacritics)
+    else:
+        text = body.text
     out = os.path.join(OUTPUT_DIR, f"tts_{uuid.uuid4().hex[:8]}.wav")
     req = SynthRequest(
         text=text,
@@ -99,6 +103,8 @@ async def clone(
     steps: int = Form(64),
     guidance: float = Form(2.5),
     speed: float = Form(0.95),
+    normalize: bool = Form(True),
+    diacritics: bool = Form(False),
     postprocess_out: bool = Form(True),
     lufs: float = Form(-14.0),
 ) -> FileResponse:
@@ -108,7 +114,7 @@ async def clone(
 
     out = os.path.join(OUTPUT_DIR, f"clone_{uuid.uuid4().hex[:8]}.wav")
     req = SynthRequest(
-        text=normalize_egyptian(text),
+        text=normalize_egyptian(text, diacritics=diacritics) if normalize else text,
         ref_audio=ref_path,
         ref_text=ref_text,
         steps=steps,

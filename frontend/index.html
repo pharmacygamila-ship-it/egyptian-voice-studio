@@ -93,6 +93,9 @@
       <label style="display:flex;align-items:center;gap:8px;margin-top:12px">
         <input type="checkbox" id="pp" checked style="width:auto"> معالجة صوتية احترافية (high-pass + de-esser + تطبيع الجهارة)
       </label>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:4px">
+        <input type="checkbox" id="diacritics" style="width:auto"> تشكيل الكلمات الملتبسة (اختياري — للنطق الأدق)
+      </label>
       <label for="token">توكن السيرفر (لو مفعّل)</label>
       <input type="text" id="token" placeholder="اتركه فاضي لو مش مطلوب">
     </details>
@@ -181,7 +184,8 @@ $('goVoice').addEventListener('click', async () => {
       body: JSON.stringify({
         text, speaker: $('speaker').value,
         steps: +$('steps').value, guidance: +$('guidance').value, speed: +$('speed').value,
-        lufs: +$('lufs').value, postprocess: $('pp').checked
+        lufs: +$('lufs').value, postprocess: $('pp').checked,
+        diacritics: $('diacritics').checked
       })
     });
     if(!r.ok){ const e = await r.json().catch(()=>({})); throw new Error(e.detail || ('خطأ '+r.status)); }
@@ -209,6 +213,7 @@ $('goClone').addEventListener('click', async () => {
     fd.append('speed', $('speed').value);
     fd.append('lufs', $('lufs').value);
     fd.append('postprocess_out', $('pp').checked);
+    fd.append('diacritics', $('diacritics').checked);
     const r = await fetch('/clone', { method:'POST', headers: authHeaders(), body: fd });
     if(!r.ok){ const e = await r.json().catch(()=>({})); throw new Error(e.detail || ('خطأ '+r.status)); }
     const blob = await r.blob();

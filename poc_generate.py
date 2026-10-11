@@ -32,6 +32,8 @@ def main() -> int:
     ap.add_argument("--guidance", type=float, default=2.5)
     ap.add_argument("--speed", type=float, default=0.95)
     ap.add_argument("--no-normalize", action="store_true", help="يعطّل تطبيع النص")
+    ap.add_argument("--diacritics", action="store_true",
+                    help="تشكيل الكلمات الملتبسة (اختياري)")
     ap.add_argument("--no-postprocess", action="store_true")
     ap.add_argument("--server", help="رابط سيرفر GPU بتاعنا (يشغّل المحرك 'server')")
     ap.add_argument("--token", help="توكن السيرفر (TTS_SERVER_TOKEN)")
@@ -47,7 +49,7 @@ def main() -> int:
     else:
         ap.error("لازم تحدد --text أو --text-file")
 
-    clean = normalize_egyptian(text) if not args.no_normalize else text
+    clean = normalize_egyptian(text, diacritics=args.diacritics) if not args.no_normalize else text
     print(f"[i] الصوت: {args.speaker or args.ref_audio}")
     print(f"[i] النص: {clean[:120]}{'...' if len(clean) > 120 else ''}")
 

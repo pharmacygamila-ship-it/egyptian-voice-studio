@@ -14,14 +14,20 @@
     TTS_SERVER_URL=https://<workspace>--egyptian-tts-api.modal.run
     TTS_SERVER_TOKEN=نفس-السرّ
 
-ملاحظة: الملف ده مستقل بذاته (مش محتاج باقي الريبو وقت النشر).
+ملاحظة: الصورة بتضم مجلد `backend/` من الريبو (طبقة النص المصري + معالجة الصوت)
+عشان النتيجة على Modal تطابق الـ API الرئيسي: تطبيع + تشكيل + LUFS/postprocess.
 """
 from __future__ import annotations
+
+import os
 
 import modal
 
 MODEL_ID = "mohammedaly22/VoiceTut-TTS"
 HF_HOME = "/models"
+
+# مسار `backend/` جوه الريبو — بننسخه للصورة عشان نستخدم نفس الطبقات (نص/صوت)
+_BACKEND = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "backend")
 
 SPEAKERS = [
     "Abdelrahman", "Abdullah", "Kamal", "Hossam", "Mohamed", "Omar",
@@ -34,11 +40,13 @@ app = modal.App("egyptian-tts")
 image = (
     modal.Image.debian_slim(python_version="3.11")
     .apt_install("git", "ffmpeg", "libsndfile1")
+    .copy_local_dir(_BACKEND, "/app/backend")
     .pip_install("torch")                                     # Modal بتجهّز نسخة CUDA
     .pip_install("git+https://github.com/k2-fsa/OmniVoice.git")
     .pip_install("voicetut-tts")
     .pip_install("fastapi", "uvicorn", "python-multipart", "soundfile", "numpy", "scipy", "pyloudnorm")
-    .env({"HF_HOME": HF_HOME, "TTS_ENGINE": "local", "TTS_OUTPUT_DIR": "/tmp/outputs"})
+    .env({"HF_HOME": HF_HOME, "TTS_ENGINE": "local",
+          "TTS_OUTPUT_DIR": "/tmp/outputs", "PYTHONPATH": "/app"})
 )
 
 
@@ -75,6 +83,9 @@ class VoiceServer:
         from fastapi.responses import FileResponse
         from pydantic import BaseModel
 
+        from backend.audio.postprocess import postprocess
+        from backend.text.normalize import normalize_egyptian
+
         out_dir = "/tmp/outputs"
         os.makedirs(out_dir, exist_ok=True)
         fast = FastAPI(title="Egyptian TTS (Modal)", version="0.1.0")
@@ -90,6 +101,10 @@ class VoiceServer:
             steps: int = 64
             guidance: float = 2.5
             speed: float = 0.95
+            normalize: bool = True
+            diacritics: bool = False
+            postprocess: bool = True
+            lufs: float = -14.0
 
         @fast.get("/health")
         def health() -> dict:
@@ -102,10 +117,16 @@ class VoiceServer:
         @fast.post("/tts", dependencies=[Depends(require_token)])
         def tts(body: Body) -> FileResponse:
             out = os.path.join(out_dir, f"{uuid.uuid4().hex[:8]}.wav")
+            text = (
+                normalize_egyptian(body.text, diacritics=body.diacritics)
+                if body.normalize else body.text
+            )
             self.tts.synthesize(
-                body.text, speaker=body.speaker, output=out,
+                text, speaker=body.speaker, output=out,
                 num_step=body.steps, guidance_scale=body.guidance, speed=body.speed,
             )
+            if body.postprocess:
+                out = postprocess(out, target_lufs=body.lufs)
             return FileResponse(out, media_type="audio/wav", filename="speech.wav")
 
         @fast.post("/clone", dependencies=[Depends(require_token)])
@@ -116,15 +137,25 @@ class VoiceServer:
             steps: int = Form(64),
             guidance: float = Form(2.5),
             speed: float = Form(0.95),
+            normalize: bool = Form(True),
+            diacritics: bool = Form(False),
+            postprocess_out: bool = Form(True),
+            lufs: float = Form(-14.0),
         ) -> FileResponse:
             ref = os.path.join(out_dir, f"ref_{uuid.uuid4().hex[:8]}.wav")
             with open(ref, "wb") as fh:
                 fh.write(await ref_audio.read())
             out = os.path.join(out_dir, f"{uuid.uuid4().hex[:8]}.wav")
+            text = (
+                normalize_egyptian(text, diacritics=diacritics)
+                if normalize else text
+            )
             self.tts.synthesize(
                 text, ref_audio=ref, ref_text=ref_text, output=out,
                 num_step=steps, guidance_scale=guidance, speed=speed,
             )
+            if postprocess_out:
+                out = postprocess(out, target_lufs=lufs)
             return FileResponse(out, media_type="audio/wav", filename="clone.wav")
 
         return fast

@@ -48,6 +48,8 @@ def main() -> int:
     ap.add_argument("--guidance", type=float, default=2.5)
     ap.add_argument("--speed", type=float, default=0.95)
     ap.add_argument("--zip", dest="zip_path", help="يضغط كل النواتج في ملف zip")
+    ap.add_argument("--diacritics", action="store_true",
+                    help="تشكيل الكلمات الملتبسة (اختياري)")
     ap.add_argument("--dry-run", action="store_true", help="يعرض الخطة من غير توليد")
     args = ap.parse_args()
 
@@ -67,7 +69,7 @@ def main() -> int:
         name, speaker = parse_name(path)
         speaker = speaker or args.speaker
         with open(path, encoding="utf-8") as fh:
-            text = normalize_egyptian(fh.read().strip())
+            text = normalize_egyptian(fh.read().strip(), diacritics=args.diacritics)
         out = os.path.join(args.out, f"{name}.wav")
 
         if args.dry_run:
