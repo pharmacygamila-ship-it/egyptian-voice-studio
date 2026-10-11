@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>استوديو الصوت المصري</title>
+<style>
+  :root{
+    --bg:#0f1117; --panel:#171a23; --panel2:#1e2230; --line:#2a2f3e;
+    --txt:#e7eaf3; --mut:#9aa3b8; --accent:#2f6bff; --accent2:#5b8bff;
+    --ok:#2ecc71; --err:#ff5c5c;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+    font-family:"Segoe UI",Tahoma,system-ui,sans-serif;line-height:1.7}
+  .wrap{max-width:900px;margin:0 auto;padding:24px 18px 60px}
+  header{display:flex;align-items:center;gap:14px;margin-bottom:6px}
+  .logo{font-size:34px}
+  h1{font-size:22px;margin:0}
+  h1 .a{color:var(--accent2)}
+  .sub{color:var(--mut);font-size:13px;margin:0 0 18px}
+  .badge{display:inline-block;font-size:12px;padding:3px 12px;border-radius:20px;
+    border:1px solid var(--line);color:var(--mut);background:var(--panel)}
+  .badge b{color:var(--accent2)}
+  .tabs{display:flex;gap:8px;margin:18px 0}
+  .tab{flex:1;padding:11px;border-radius:12px;border:1px solid var(--line);
+    background:var(--panel);color:var(--mut);cursor:pointer;font-size:15px;
+    font-family:inherit;transition:.15s}
+  .tab.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px}
+  label{display:block;font-size:13px;color:var(--mut);margin:14px 0 6px}
+  select,textarea,input[type=number],input[type=text]{
+    width:100%;background:var(--panel2);color:var(--txt);border:1px solid var(--line);
+    border-radius:10px;padding:11px 12px;font-size:15px;font-family:inherit}
+  textarea{min-height:120px;resize:vertical}
+  .row{display:flex;gap:12px;flex-wrap:wrap}
+  .row>div{flex:1;min-width:120px}
+  .btn{margin-top:18px;width:100%;padding:14px;border:0;border-radius:12px;
+    background:var(--accent);color:#fff;font-size:16px;font-weight:700;
+    font-family:inherit;cursor:pointer;transition:.15s}
+  .btn:hover{background:var(--accent2)}
+  .btn:disabled{opacity:.5;cursor:wait}
+  .btn2{background:var(--panel2);border:1px solid var(--line);font-weight:400}
+  details{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+  summary{cursor:pointer;color:var(--mut);font-size:14px}
+  audio{width:100%;margin-top:16px}
+  .status{margin-top:14px;font-size:14px;min-height:22px}
+  .status.err{color:var(--err)}
+  .status.ok{color:var(--ok)}
+  .hint{color:var(--mut);font-size:12px;margin-top:6px}
+  .hide{display:none}
+  a.dl{color:var(--accent2);font-size:14px;display:inline-block;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">𓋹</div>
+    <div>
+      <h1>استوديو الصوت <span class="a">المصري</span></h1>
+      <p class="sub">تعليق صوتي للعامية المصرية + استنساخ صوت — VoiceTut-TTS</p>
+    </div>
+  </header>
+  <div class="badge">المحرك: <b id="engine">…</b></div>
+
+  <div class="tabs">
+    <button class="tab on" id="tabVoice">🎙️ صوت جاهز</button>
+    <button class="tab" id="tabClone">🧬 استنساخ صوت</button>
+  </div>
+
+  <!-- صوت جاهز -->
+  <div class="card" id="paneVoice">
+    <label for="speaker">الصوت</label>
+    <select id="speaker"><option>…</option></select>
+
+    <label for="text">النص بالعامية المصرية</label>
+    <textarea id="text" placeholder="اكتب الإعلان هنا... مثال: جرب قهوة بون النهاردة! طعم أصلي وريحة تجنن."></textarea>
+
+    <details>
+      <summary>⚙️ إعدادات متقدمة</summary>
+      <div class="row">
+        <div><label for="steps">خطوات التوليد</label><input type="number" id="steps" value="64" min="8" max="64"></div>
+        <div><label for="guidance">قوة التوجيه</label><input type="number" id="guidance" value="2.5" step="0.1" min="1" max="5"></div>
+        <div><label for="speed">السرعة</label><input type="number" id="speed" value="0.95" step="0.05" min="0.5" max="2"></div>
+      </div>
+      <label for="token">توكن السيرفر (لو مفعّل)</label>
+      <input type="text" id="token" placeholder="اتركه فاضي لو مش مطلوب">
+    </details>
+
+    <button class="btn" id="goVoice">🔊 توليد الصوت</button>
+    <div class="status" id="stVoice"></div>
+    <audio id="player" controls class="hide"></audio>
+    <a class="dl hide" id="dl" download="speech.wav">⬇️ تنزيل الملف</a>
+  </div>
+
+  <!-- استنساخ -->
+  <div class="card hide" id="paneClone">
+    <label for="ref">مقطع صوتي مرجعي (wav/mp3)</label>
+    <input type="file" id="ref" accept="audio/*">
+
+    <label for="refText">نص المقطع المرجعي (اختياري — بيحسّن الدقة)</label>
+    <textarea id="refText" style="min-height:70px" placeholder="اكتب اللي بيتقال في المقطع..."></textarea>
+
+    <label for="text2">النص اللي عايز تنطقه بصوت ده</label>
+    <textarea id="text2" placeholder="اكتب الكلام الجديد هنا..."></textarea>
+
+    <button class="btn" id="goClone">🧬 استنساخ وتوليد</button>
+    <div class="status" id="stClone"></div>
+    <audio id="player2" controls class="hide"></audio>
+    <a class="dl hide" id="dl2" download="clone.wav">⬇️ تنزيل الملف</a>
+  </div>
+
+  <p class="hint">⚠️ استخدم الأصوات بموافقة أصحابها. ممنوع انتحال أشخاص أو استخدام الصوت في تضليل.</p>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const token = () => ($('token').value || localStorage.getItem('tts_token') || '').trim();
+$('token').addEventListener('change', () => localStorage.setItem('tts_token', $('token').value.trim()));
+$('token').value = localStorage.getItem('tts_token') || '';
+
+function authHeaders(extra={}){
+  const h = {...extra};
+  const t = token();
+  if (t) h['X-Auth-Token'] = t;
+  return h;
+}
+
+async function loadEngine(){
+  try{
+    const r = await fetch('/health');
+    const j = await r.json();
+    $('engine').textContent = j.engine || '?';
+  }catch(e){ $('engine').textContent = 'غير متصل'; }
+}
+
+async function loadVoices(){
+  try{
+    const r = await fetch('/voices');
+    const list = await r.json();
+    const sel = $('speaker');
+    sel.innerHTML = '';
+    list.forEach(s=>{
+      const o = document.createElement('option');
+      o.value = s.name;
+      o.textContent = s.name + (s.gender?` · ${s.gender}`:'') + (s.tags&&s.tags.length?` · ${s.tags.join('، ')}`:'');
+      if (s.name === 'Sayed') o.selected = true;
+      sel.appendChild(o);
+    });
+  }catch(e){ $('speaker').innerHTML = '<option>تعذّر تحميل الأصوات</option>'; }
+}
+
+function setStatus(el, msg, cls){ el.textContent = msg; el.className = 'status ' + (cls||''); }
+
+async function playBlob(blob, player, dl, name){
+  player.src = URL.createObjectURL(blob);
+  player.classList.remove('hide');
+  dl.href = player.src; dl.download = name; dl.classList.remove('hide');
+  player.play().catch(()=>{});
+}
+
+$('goVoice').addEventListener('click', async () => {
+  const st = $('stVoice'), btn = $('goVoice');
+  const text = $('text').value.trim();
+  if(!text){ setStatus(st,'اكتب النص الأول','err'); return; }
+  btn.disabled = true; setStatus(st,'⏳ جاري التوليد... (ممكن يستغرق شوية)','');
+  try{
+    const r = await fetch('/tts', {
+      method:'POST',
+      headers: authHeaders({'Content-Type':'application/json'}),
+      body: JSON.stringify({
+        text, speaker: $('speaker').value,
+        steps: +$('steps').value, guidance: +$('guidance').value, speed: +$('speed').value
+      })
+    });
+    if(!r.ok){ const e = await r.json().catch(()=>({})); throw new Error(e.detail || ('خطأ '+r.status)); }
+    const blob = await r.blob();
+    await playBlob(blob, $('player'), $('dl'), 'speech.wav');
+    setStatus(st,'✓ تم التوليد','ok');
+  }catch(e){ setStatus(st,'❌ '+e.message,'err'); }
+  finally{ btn.disabled = false; }
+});
+
+$('goClone').addEventListener('click', async () => {
+  const st = $('stClone'), btn = $('goClone');
+  const text = $('text2').value.trim();
+  const f = $('ref').files[0];
+  if(!f){ setStatus(st,'ارفع مقطع صوتي مرجعي','err'); return; }
+  if(!text){ setStatus(st,'اكتب النص المطلوب','err'); return; }
+  btn.disabled = true; setStatus(st,'⏳ جاري الاستنساخ... (ممكن يستغرق شوية)','');
+  try{
+    const fd = new FormData();
+    fd.append('text', text);
+    fd.append('ref_audio', f);
+    fd.append('ref_text', $('refText').value.trim());
+    fd.append('steps', $('steps').value);
+    fd.append('guidance', $('guidance').value);
+    fd.append('speed', $('speed').value);
+    const r = await fetch('/clone', { method:'POST', headers: authHeaders(), body: fd });
+    if(!r.ok){ const e = await r.json().catch(()=>({})); throw new Error(e.detail || ('خطأ '+r.status)); }
+    const blob = await r.blob();
+    await playBlob(blob, $('player2'), $('dl2'), 'clone.wav');
+    setStatus(st,'✓ تم الاستنساخ','ok');
+  }catch(e){ setStatus(st,'❌ '+e.message,'err'); }
+  finally{ btn.disabled = false; }
+});
+
+$('tabVoice').addEventListener('click', ()=>{
+  $('tabVoice').classList.add('on'); $('tabClone').classList.remove('on');
+  $('paneVoice').classList.remove('hide'); $('paneClone').classList.add('hide');
+});
+$('tabClone').addEventListener('click', ()=>{
+  $('tabClone').classList.add('on'); $('tabVoice').classList.remove('on');
+  $('paneClone').classList.remove('hide'); $('paneVoice').classList.add('hide');
+});
+
+loadEngine(); loadVoices();
+</script>
+</body>
+</html>

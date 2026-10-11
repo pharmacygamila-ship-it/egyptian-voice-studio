@@ -56,6 +56,15 @@ try:
     if not up:
         raise SystemExit(1)
 
+    # الواجهة
+    try:
+        with urllib.request.urlopen(f"{BASE}/", timeout=5) as r:
+            html = r.read().decode("utf-8", "replace")
+            st = r.status
+        check("الواجهة (/) اشتغلت", st == 200 and "استوديو الصوت" in html)
+    except Exception as e:  # noqa: BLE001
+        check(f"الواجهة (/) اشتغلت ({e})", False)
+
     from backend.engine.server_client import ServerVoiceTutEngine
 
     # /voices بدون توكن (مفتوح)

@@ -64,6 +64,18 @@ def health() -> dict:
     return {"ok": True, "engine": engine.name}
 
 
+FRONTEND = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "index.html"
+)
+
+
+@app.get("/", include_in_schema=False)
+def index() -> FileResponse:
+    if not os.path.exists(FRONTEND):
+        raise HTTPException(status_code=404, detail="الواجهة غير موجودة")
+    return FileResponse(FRONTEND, media_type="text/html")
+
+
 @app.get("/voices")
 def voices() -> list[dict]:
     return [s.__dict__ for s in engine.list_speakers()]

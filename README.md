@@ -30,6 +30,7 @@
 ├─ requirements-gpu.txt        مكتبات GPU
 ├─ poc_generate.py             سطر أوامر للتوليد السريع
 ├─ .env.example                مثال إعدادات
+├─ frontend/index.html         واجهة الويب (RTL)
 ├─ backend/
 │   ├─ main.py                 FastAPI (/health /voices /tts /clone) + حماية توكن
 │   ├─ engine/
@@ -77,6 +78,8 @@
 - `GET  /voices`  → الأصوات الجاهزة
 - `POST /tts`     → JSON: `{ "text": "...", "speaker": "Sayed" }`
 - `POST /clone`   → multipart: `text`, `ref_audio`, `ref_text`
+
+ثم افتح الواجهة في المتصفح: **http://127.0.0.1:8000/**
 
 ---
 
