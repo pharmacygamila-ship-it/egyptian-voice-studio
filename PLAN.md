@@ -18,6 +18,7 @@
 - ✅ تم توليد أول صوت مصري حقيقي: `data/outputs/ads_sample_01_Sayed.wav`.
 - ✅ الاختبارات ناجحة: `selfcheck` + `test_text` (48) + `test_audio` (28) + `test_finetune` (17) + `test_gradio` (16) + `check_http`.
 - ✅ جاهزية النشر على GPU سحابي: `Dockerfile` + `deploy/`.
+- ⏳ **معلّق:** توليد عينة جديدة على GPU سحابي (محتاج `HF_TOKEN` أو GPU مدفوع — كوتة الـ Space المجانية خلصت).
 - ⏭️ **القرار:** التشغيل الإنتاجي على **GPU سحابي** (RunPod/Vast) — راجع `deploy/README.md`.
 
 ---

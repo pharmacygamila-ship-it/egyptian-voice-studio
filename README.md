@@ -11,12 +11,15 @@
 ## ⚡ الحالة الحالية
 
 - ✅ الجهاز: تم تثبيت **Python 3.12** + بيئة افتراضية `.venv`.
-- ✅ محرك أونلاين شغّال (`RemoteVoiceTutEngine`) → يولّد صوت فوراً **من غير GPU**.
+- ✅ محرك أونلاين شغّال (`RemoteVoiceTutEngine`) → يولّد صوت **من غير GPU** (لكن فيه كوتة مجانية).
 - ✅ معمارية **عميل/سيرفر** جاهزة للـ GPU السحابي (`ServerVoiceTutEngine` + `deploy/`).
 - ✅ نموذج صوت جاهز: `data/outputs/ads_sample_01_Sayed.wav`
 - ✅ تشكيل اختياري (`diacritics.py`) + قاموس نطق موسّع للبراندات والشركات — `tests/test_text.py` (48 اختبار).
-- ✅ كل الاختبارات ناجحة: `tests/selfcheck.py` و `tests/check_http.py`
+- ✅ **معالجة بجودة بث**: EBU R128 + de-esser + high-pass + **ضغط/EQ متعدد النطاقات** + **تصدير MP3** بدون ffmpeg — `tests/test_audio.py` (28 اختبار).
+- ✅ **واجهة Gradio** للتوليد/الاستنساخ (`frontend/app_gradio.py`) — `tests/test_gradio.py` (16 اختبار).
+- ✅ كل الاختبارات ناجحة: `tests/run_all.py` (selfcheck + text + audio + finetune + gradio + http).
 - ⚠️ كارت الشاشة الحالي (AMD 2GB) مش بينفع → للإنتاج نشغّل على **GPU سحابي** (شوف `deploy/README.md`).
+- ⏳ **توليد عينة جديدة على GPU سحابي**: محتاج إما GPU مدفوع، أو `HF_TOKEN` (لأن كوتة الـ Space المجانية خلصت).
 
 ---
 
@@ -249,7 +252,11 @@ CI بيشغّل كل الاختبارات تلقائياً على كل push (`.g
 
 ## 📋 الخطوات الجاية
 
-1. توفير GPU (محلي أو سحابي) → تشغيل `LocalVoiceTutEngine`.
+1. ⏳ **توليد عينة على GPU سحابي** — محتاج واحد من:
+   - **HF token** (أسرع): `$env:HF_TOKEN="hf_..."` ثم `poc_generate.py` (بدون GPU).
+   - **Colab/Kaggle مجاني**: افتح `deploy/colab_free_gpu.ipynb`.
+   - **Modal** (`$30` رصيد مجاني): `modal run deploy/modal_app.py`.
+   - **GPU مدفوع (الإنتاج)**: `deploy/setup_gpu.sh` + `deploy/run_server.sh` (شوف `deploy/README.md`).
 2. ✅ قاموس البراندات/الشركات المصرية + تشكيل الكلمات الملتبسة (`backend/text/`).
 3. ✅ مسار fine-tune لاستنساخ «نفس الأداء الصوتي» (`finetune/`) — يتبقى تركيب API التدريب الرسمي.
 4. ✅ تصدير MP3 + ضغط/EQ متعدد النطاقات (`backend/audio/`).
