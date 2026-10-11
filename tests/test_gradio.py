@@ -93,6 +93,8 @@ check("_launch_kwargs يرجّع dict", isinstance(app._launch_kwargs(), dict))
 demo = app.build_interface(speakers=["Sayed", "Yasmin"])
 check("build_interface: Blocks", isinstance(demo, gradio.Blocks))
 check("build_interface: فيه مكونات", len(demo.blocks) > 10)
+_labels = [str(getattr(v, "label", "")) for v in demo.blocks.values()]
+check("build_interface: فيه تبويب سريع وسهل", any("سريع وسهل" in lb for lb in _labels))
 print(f"    -> عدد المكونات: {len(demo.blocks)}")
 
 # ── 3) التوليد من غير شبكة (محرك وهمي) ───────────────────────────────────
@@ -125,6 +127,17 @@ try:
     check("clone_ui: يرفض بدون مرجع", False)
 except Exception:  # noqa: BLE001
     check("clone_ui: يرفض بدون مرجع", True)
+
+# ── 4b) الواجهة السريعة ─────────────────────────────────────────────────
+path3, md3 = app.simple_synth("جرب عرض اليوم", "Sayed", 64, 2.5, 0.95)
+check("simple_synth: mp3 اتكتب", path3.endswith(".mp3") and os.path.exists(path3))
+check("simple_synth: الرسالة فيها جاهز", "جاهز" in md3)
+
+try:
+    app.simple_synth("   ", "Sayed", 64, 2.5, 0.95)
+    check("simple_synth: يرفض النص الفاضي", False)
+except Exception:  # noqa: BLE001
+    check("simple_synth: يرفض النص الفاضي", True)
 
 # ── 5) list_speakers من المحرك ───────────────────────────────────────────
 check("list_speakers: من المحرك", app.list_speakers() == ["Sayed", "Yasmin"])

@@ -208,6 +208,36 @@ def synth_ui(
     return _finish(path, postprocess_on, lufs, multiband, fmt)
 
 
+def simple_synth(text, speaker, steps, guidance, speed):
+    """الواجهة السريعة: نص + صوت → صوت جاهز (mp3) — التفاصيل مخفية عن المستخدم."""
+    import gradio as gr
+
+    if not (text or "").strip():
+        raise gr.Error("اكتب نص الإعلان الأول")
+    clean = prepare_text(text, True, True)  # تطبيع + تشكيل دايماً في الوضع البسيط
+    out = _out_path("tts")
+    req = SynthRequest(
+        text=clean,
+        speaker=speaker,
+        steps=int(steps),
+        guidance=float(guidance),
+        speed=float(speed),
+        normalize=False,
+    )
+    try:
+        path = get_engine().synthesize(req, out)
+    except Exception as exc:  # noqa: BLE001
+        raise gr.Error(f"فشل التوليد: {exc}") from exc
+    path = postprocess(path, target_lufs=-14.0, multiband="voice")
+    path = export(path, "mp3")
+    rep = analyze(path)
+    md = (
+        f"✅ **الصوت جاهز** · {rep['seconds']:.2f} ثانية · {int(rep['sr'])}Hz · MP3\n"
+        "نزّله من أيقونة **⬇️** على مشغّل الصوت."
+    )
+    return path, md
+
+
 def clone_ui(
     ref_audio, ref_text, text, steps, guidance, speed,
     normalize, diacritics, postprocess_on, lufs, multiband, fmt,
@@ -392,7 +422,7 @@ def build_interface(speakers: list[str] | None = None):
     with gr.Blocks(**_blocks_kwargs()) as demo:
         gr.Markdown(
             "# 🎙️ استوديو الصوت المصري\n"
-            "مركز تحكم كامل: **توليد · استنساخ · دفعي · فحص نطق · قاموس · إعدادات**."
+            "التبويب **🎯 سريع وسهل** هو اللي هتستخدمه — والباقي أدوات متقدمة لو احتجت."
         )
         with gr.Row():
             speaker = gr.Dropdown(speakers, value=default_speaker, label="الصوت الجاهز", scale=4)
@@ -413,6 +443,28 @@ def build_interface(speakers: list[str] | None = None):
                 normalize = gr.Checkbox(True, label="تطبيع النص المصري")
 
         with gr.Tabs():
+            # ── سريع وسهل (التبويب الافتراضي) ──
+            with gr.Tab("🎯 سريع وسهل"):
+                gr.Markdown("**اكتب نص إعلانك**، اختر الصوت من فوق ↑، ثم اضغط **توليد**.")
+                stext = gr.Textbox(
+                    lines=3,
+                    label="نص الإعلان",
+                    placeholder="مثال: عروض النهارده على كل المنتجات، خصم خمسين بالميه لفترة محدودة",
+                )
+                sgo = gr.Button("⚡ توليد الصوت", variant="primary")
+                with gr.Accordion("⚙️ ضبط الجودة (اختياري)", open=False):
+                    with gr.Row():
+                        ssteps = gr.Slider(8, 64, value=int(settings.get("steps", 64)), step=1, label="خطوات التوليد")
+                        sguid = gr.Slider(1.0, 5.0, value=float(settings.get("guidance", 2.5)), step=0.1, label="قوة التوجيه")
+                        sspeed = gr.Slider(0.5, 2.0, value=float(settings.get("speed", 0.95)), step=0.05, label="السرعة")
+                sout = gr.Audio(label="🎵 صوتك جاهز", type="filepath")
+                sinfo = gr.Markdown()
+                sgo.click(
+                    simple_synth,
+                    [stext, speaker, ssteps, sguid, sspeed],
+                    [sout, sinfo],
+                )
+
             # ── توليد ──
             with gr.Tab("🔊 توليد"):
                 text = gr.Textbox(lines=4, label="النص (عامية مصرية)")
