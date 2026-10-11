@@ -13,8 +13,8 @@ __pycache__/
 data/outputs/*.wav
 data/outputs/*.mp3
 data/refs/
-models/
-outputs/
+/models/
+/outputs/
 
 # لوجات
 *.log
