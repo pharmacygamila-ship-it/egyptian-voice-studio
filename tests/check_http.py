@@ -90,6 +90,14 @@ try:
     except urllib.error.HTTPError as e:
         check("حماية التوكن (/tts بدون توكن = 401)", e.code == 401)
 
+    # /warmup بدون توكن → 401
+    req = urllib.request.Request(f"{BASE}/warmup", data=b"", method="POST")
+    try:
+        urllib.request.urlopen(req, timeout=10)
+        check("حماية التوكن (/warmup بدون توكن = 401)", False)
+    except urllib.error.HTTPError as e:
+        check("حماية التوكن (/warmup بدون توكن = 401)", e.code == 401)
+
     print("\n==>", "السيرفر والعميل تمام ✅" if ok else "فيه فشل ❌")
 finally:
     proc.terminate()

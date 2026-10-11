@@ -1,10 +1,14 @@
 """FastAPI backend لتطبيق استنساخ/توليد الصوت المصري.
 
-التشغيل:
+ده **سيرفر الموديل**: بيشتغل على GPU (مثلاً Colab)، والتطبيق يتصل بيه بمفتاح.
+
+التشغيل محلياً:
     .venv\\Scripts\\python.exe -m uvicorn backend.main:app --reload --port 8000
 
-المحرك الافتراضي = الـ Space الأونلاين (من غير GPU).
-لتبديله لمحرك محلي: عيّن TTS_ENGINE=local
+التشغيل كسيرفر سحابي (Colab): شوف deploy/colab_model_server.ipynb
+
+المفتاح: لو عيّنت TTS_SERVER_TOKEN، لازم كل الطلبات تبعته في هيدر `X-Auth-Token`.
+المحرك الافتراضي = الـ Space الأونلاين (من غير GPU). للـ GPU: عيّن TTS_ENGINE=local
 """
 from __future__ import annotations
 
@@ -12,6 +16,7 @@ import os
 import uuid
 
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
@@ -35,6 +40,14 @@ def require_token(x_auth_token: str | None = Header(default=None)) -> None:
 engine: TTSEngine = build_engine()
 app = FastAPI(title="Egyptian Voice Clone API", version="0.1.0")
 
+# يسمح لواجهة ويب في نطاق تاني (أو للتجربة) إنها تكلّم السيرفر ده.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 class TTSBody(BaseModel):
     text: str = Field(..., min_length=1)
@@ -55,7 +68,12 @@ class TTSBody(BaseModel):
 
 @app.get("/health")
 def health() -> dict:
-    return {"ok": True, "engine": engine.name}
+    return {
+        "ok": True,
+        "engine": engine.name,
+        "auth_required": bool(os.getenv("TTS_SERVER_TOKEN")),
+        "version": app.version,
+    }
 
 
 FRONTEND = os.path.join(
@@ -73,6 +91,18 @@ def index() -> FileResponse:
 @app.get("/voices")
 def voices() -> list[dict]:
     return [s.__dict__ for s in engine.list_speakers()]
+
+
+@app.post("/warmup", dependencies=[Depends(require_token)])
+def warmup() -> dict:
+    """يحمّل الموديل مسبقًا (اختياري) عشان أول طلب من التطبيق يبقى سريع."""
+    out = os.path.join(OUTPUT_DIR, "warmup.wav")
+    req = SynthRequest(text="تجهيز", speaker="Sayed", steps=8, normalize=False)
+    try:
+        engine.synthesize(req, out)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return {"ok": True, "engine": engine.name}
 
 
 def _finish(path: str, fmt: str) -> FileResponse:

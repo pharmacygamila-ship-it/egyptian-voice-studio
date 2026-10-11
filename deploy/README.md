@@ -16,14 +16,16 @@ TTS_ENGINE=server        TTS_ENGINE=local
 
 | الخيار | إيه اللي تاخده | مناسب لإيه | الملف |
 | --- | --- | --- | --- |
-| **Google Colab** | GPU T4 مجاناً (~15–30 س/أسبوع) | توليد دفعي (مش سيرفر دائم) | `colab_free_gpu.ipynb` |
-| **Kaggle** | ~30 س GPU/أسبوع | نفس الاستخدام | نفس الـ notebook |
+| **Google Colab** | GPU T4 مجاناً (~15–30 س/أسبوع) | سيرفر موديل بمفتاح، أو توليد دفعي | `colab_model_server.ipynb` · `colab_free_gpu.ipynb` |
+| **Kaggle** | ~30 س GPU/أسبوع | نفس الاستخدام | نفس الـ notebooks |
 | **Modal** | **$30/شهر** رصيد | سيرفر API مجاني دائم | `modal_app.py` |
 
-### 1) Colab — ولّد إعلاناتك مجاناً
-1. افتح [colab.research.google.com](https://colab.research.google.com) → `File` → `Upload notebook` → ارفع `deploy/colab_free_gpu.ipynb`
+### 1) Colab — **سيرفر الموديل بمفتاح** ⭐
+1. افتح [colab.research.google.com](https://colab.research.google.com) → `File` → `Upload notebook` → ارفع `deploy/colab_model_server.ipynb`
 2. `Runtime` → `Change runtime type` → **T4 GPU**
-3. شغّل الخلايا بالترتيب → هيولّد الإعلانات وينزّلك `ads.zip`
+3. شغّل الخلايا → هيطلعلك **🔗 رابط عام** + **🔑 مفتاح** → حُطهم في التطبيق (`⚙️ الإعدادات` → محرك `server`)
+
+> للتوليد الدفعي كله على كولاب (من غير مفتاح): `deploy/colab_free_gpu.ipynb`
 
 ### 2) Modal — سيرفر API مجاني (serverless)
 ```bash

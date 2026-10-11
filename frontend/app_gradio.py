@@ -354,6 +354,23 @@ def apply_engine_settings(kind, server_url, token, model_id, device, speaker):
     return status, _dropdown_update(speakers, value)
 
 
+def test_connection(kind, server_url, token, model_id, device):
+    """يجرّب الاتصال بالمحرك المختار من غير ما يغيّر الإعدادات المحفوظة."""
+    settings = {
+        "engine": (kind or "remote").lower(),
+        "server_url": server_url or "",
+        "token": token or "",
+        "model_id": model_id or "",
+        "device": device or "cuda",
+    }
+    try:
+        eng = _build_engine_from(settings)
+        names = [s.name for s in eng.list_speakers()]
+        return f"✅ الاتصال ناجح — محرك `{getattr(eng, 'name', kind)}` · {len(names)} صوت متاح."
+    except Exception as exc:  # noqa: BLE001
+        return f"❌ فشل الاتصال: {exc}"
+
+
 def refresh_speakers(current):
     sp = list_speakers()
     value = current if current in sp else (sp[0] if sp else None)
@@ -486,28 +503,37 @@ def build_interface(speakers: list[str] | None = None):
             # ── الإعدادات ──
             with gr.Tab("⚙️ الإعدادات"):
                 gr.Markdown(
-                    "اختر **نوع المحرك**: `remote` (Space جاهز) · `server` (GPU سحابي بتاعك) · "
-                    "`local` (مباشر على GPU — Colab). الإعدادات بتتحفظ تلقائيًا."
+                    "اختر **نوع المحرك**: `server` (**سيرفر الموديل على كولاب** — الموصى به) · "
+                    "`remote` (Space جاهز) · `local` (GPU مباشر على نفس الجهاز). "
+                    "الإعدادات بتتحفظ تلقائيًا."
                 )
                 engine_kind = gr.Dropdown(
                     ENGINE_CHOICES, value=str(settings.get("engine", "remote")), label="نوع المحرك"
                 )
-                srv_url = gr.Textbox(value=str(settings.get("server_url", "")), label="رابط السيرفر (server / remote مخصّص)")
-                srv_token = gr.Textbox(value=str(settings.get("token", "")), type="password", label="التوكن (server / HuggingFace)")
+                srv_url = gr.Textbox(value=str(settings.get("server_url", "")), label="🔗 رابط سيرفر الموديل (server)")
+                srv_token = gr.Textbox(value=str(settings.get("token", "")), type="password", label="🔑 مفتاح السيرفر (X-Auth-Token)")
                 model_id = gr.Textbox(value=str(settings.get("model_id", "")), label="معرّف الموديل (local)")
                 device = gr.Dropdown(
                     ["cuda", "cpu", "mps"], value=str(settings.get("device", "cuda")), label="الجهاز (local)"
                 )
-                apply_btn = gr.Button("✅ تطبيق وتشغيل", variant="primary")
+                with gr.Row():
+                    apply_btn = gr.Button("✅ تطبيق وتشغيل", variant="primary")
+                    test_btn = gr.Button("🔌 اختبار الاتصال")
                 eng_status = gr.Markdown()
                 apply_btn.click(
                     apply_engine_settings,
                     [engine_kind, srv_url, srv_token, model_id, device, speaker],
                     [eng_status, speaker],
                 )
+                test_btn.click(
+                    test_connection,
+                    [engine_kind, srv_url, srv_token, model_id, device],
+                    [eng_status],
+                )
                 gr.Markdown(
-                    "> 💡 من غير كارت NVIDIA محليًا: استخدم `remote` أو `server`. "
-                    "للتشغيل الكامل على GPU: شغّل التطبيق على Colab واختر `local`."
+                    "> 💡 **الموديل على كولاب (سحابي)؟** اختار `server`، والصق **رابط السيرفر** و**المفتاح** "
+                    "اللي طلعوا من نوتبوك `deploy/colab_model_server.ipynb`، واضغط **تطبيق وتشغيل**.\n"
+                    "> من غير كارت NVIDIA محليًا: استخدم `server` (سيرفر كولاب) أو `remote` (Space جاهز)."
                 )
 
         refresh_btn.click(refresh_speakers, [speaker], [speaker, engine_state])

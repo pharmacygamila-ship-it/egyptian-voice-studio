@@ -1,19 +1,20 @@
 # 🎙️ استوديو الصوت المصري — عامية مصرية
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pharmacygamila-ship-it/egyptian-voice-studio/blob/main/deploy/colab_free_gpu.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pharmacygamila-ship-it/egyptian-voice-studio/blob/main/deploy/colab_model_server.ipynb)
 
 تطبيق لإنتاج تعليق صوتي (Voice Over) للإعلانات بالعامية المصرية + استنساخ صوت العميل،
 مبني على **[VoiceTut-TTS](https://huggingface.co/mohammedaly22/VoiceTut-TTS)**
 (مصري أصلي + code-switching عربي↔إنجليزي + 17 صوت + استنساخ، رخصة Apache-2.0 → تجاري مسموح).
 
-> ⭐ **المسار الرئيسي: كولاب** — المشروع كله بيشتغل من Colab (الموديل + التطبيق الكامل)،
-> من غير GPU محلي ولا سيرفر محلي. الدليل السريع: [`COLAB.md`](COLAB.md) · الخطة: [`PLAN.md`](PLAN.md).
+> ⭐ **المسار الرئيسي**: الموديل (GPU) على **كولاب**، والتطبيق عندك يتصل بيه **بمفتاح** —
+> يعني كل عمليات الموديل **سحابية**. الدليل: [`COLAB.md`](COLAB.md) · الخطة: [`PLAN.md`](PLAN.md).
+> (وفيه بديل: تشغيل التطبيق كله على كولاب — نفس الدليل.)
 
 ---
 
 ## ⚡ الحالة الحالية
 
-- ✅ **المشروع كامل على Colab**: نشغّل الموديل بنفسنا (GPU T4 مجاني) ونفتح التطبيق في المتصفح.
+- ✅ **الموديل على Colab (سحابي)**: سيرفر الموديل يشتغل على GPU T4 مجاني، والتطبيق يتصل بيه **بمفتاح** (`X-Auth-Token`).
 - ✅ **تطبيق واحد يتحكم في كل حاجة**: توليد · استنساخ · دفعي · فحص نطق · قاموس نطق · إعدادات.
 - ✅ **تطبيع مصري متقدّم** (من حزمة الموديل، بيشتغل CPU): `15` → **خَمَسْتَاشَر**، `3:30` → **تَلَاتَة و نُصّ**، `75$` → **خمسة وسبعين دولار**.
 - ✅ **منع التطبيع المزدوج** (التطبيع مرتين بيشيل التشكيل).
@@ -69,7 +70,8 @@
 │   ├─ setup_gpu.sh            تجهيز بيئة GPU
 │   ├─ run_server.sh           تشغيل السيرفر
 │   ├─ docker-compose.yml
-│   ├─ colab_free_gpu.ipynb    Notebook للـ Colab المجاني
+│   ├─ colab_model_server.ipynb  سيرفر الموديل على Colab (رابط عام + مفتاح) ⭐
+│   ├─ colab_free_gpu.ipynb    التطبيق كله على Colab (محرك local)
 │   └─ modal_app.py            نشر على Modal (رصيد مجاني)
 ├─ finetune/
 │   ├─ README.md               مسار «نفس الأداء» (Zero-shot + Fine-tune)
@@ -95,19 +97,22 @@
 
 ## 🚀 التشغيل
 
-### ⭐ المسار الرئيسي: كولاب (المشروع كله هناك)
-1. افتح النوتبوك: [deploy/colab_free_gpu.ipynb](https://colab.research.google.com/github/pharmacygamila-ship-it/egyptian-voice-studio/blob/main/deploy/colab_free_gpu.ipynb)
-2. `Runtime` → `Change runtime type` → **T4 GPU** → `Save`
-3. شغّل الخلايا بالترتيب → هيطلعلك **رابط عام** للتطبيق الكامل.
+### ⭐ المسار الرئيسي: موديل على كولاب + تطبيق بمفتاح
+**1) شغّل سيرفر الموديل على كولاب (GPU):**
+[deploy/colab_model_server.ipynb](https://colab.research.google.com/github/pharmacygamila-ship-it/egyptian-voice-studio/blob/main/deploy/colab_model_server.ipynb)
+- `Runtime` → `Change runtime type` → **T4 GPU** → `Save`
+- شغّل الخلايا → هيطلعلك **🔗 رابط السيرفر** + **🔑 المفتاح**
 
-> الخطوات بالتفصيل في **[`COLAB.md`](COLAB.md)**. على كولاب التطبيق بيشتغل بمحرك `local` على GPU.
-
-### 🖥️ التطبيق محليًا (اختياري — للمعاينة بدون GPU)
-> محتاج محرك `remote` أو `server`، لأن الجهاز من غير كارت NVIDIA.
+**2) شغّل التطبيق عندك واربطه بالمفتاح:**
 ```powershell
 .\.venv\Scripts\python.exe frontend\app_gradio.py            # http://127.0.0.1:7860
-.\.venv\Scripts\python.exe frontend\app_gradio.py --share     # رابط عام مؤقّت
 ```
+تاب **⚙️ الإعدادات** → نوع المحرك = `server` → الصق **الرابط** و**المفتاح** → **🔌 اختبار الاتصال** → **✅ تطبيق وتشغيل**.
+
+> الخطوات بالتفصيل في **[`COLAB.md`](COLAB.md)**. كل عمليات الموديل (توليد/استنساخ) بتحصل **سحابيًا** على كولاب.
+
+### 🔁 بديل: التطبيق كله على كولاب (من غير مفتاح)
+[deploy/colab_free_gpu.ipynb](https://colab.research.google.com/github/pharmacygamila-ship-it/egyptian-voice-studio/blob/main/deploy/colab_free_gpu.ipynb) → شغّل الخلايا → رابط عام `https://xxxx.gradio.live` للتطبيق الكامل (محرك `local`).
 
 | التاب | الوظيفة |
 | --- | --- |
@@ -116,15 +121,15 @@
 | 📦 **دفعي** | ملفات `.txt` → ملف zip (سمّ الملف `اسم__الصوت.txt`) |
 | 🔎 **فاحص النطق** | ASR + مقارنة بالنص **بالحرف** (أحرف ناقصة/زيادة) |
 | 📖 **قاموس النطق** | كلمات/براندات بنطقها المخصوص |
-| ⚙️ **الإعدادات** | نوع المحرك + السيرفر + التوكن + الموديل — **تُحفظ تلقائيًا** |
+| ⚙️ **الإعدادات** | نوع المحرك + رابط السيرفر + المفتاح + الموديل — **تُحفظ تلقائيًا** |
 
-### 🔌 سيرفر الـ API + واجهة الويب (اختياري للمتقدّمين)
-> ده المسار اللي بقى له بديل: **التطبيق** فيه كل حاجة أسهل. موجود لو محتاج تربط نظام تاني بالـ HTTP.
+### 🔌 سيرفر الموديل (الـ API اللي كولاب بيشغّله)
+> ده اللي بيشتغل على كولاب في المسار الرئيسي. تشغيله محليًا (لو عندك GPU):
 ```powershell
 .\.venv\Scripts\python.exe -m uvicorn backend.main:app --reload --port 8000
 ```
-- `GET  /health` · `GET  /voices` · `POST /tts` · `POST /clone`
-- الواجهة: **http://127.0.0.1:8000/**
+- `GET /health` · `GET /voices` · `POST /tts` · `POST /clone` · `POST /warmup`
+- الحماية: لو `TTS_SERVER_TOKEN` متعيّن، لازم كل الطلبات تبعث هيدر `X-Auth-Token`.
 
 ### ⌨️ سطر أوامر (اختياري)
 ```powershell
@@ -133,8 +138,7 @@
 .\.venv\Scripts\python.exe -m backend.qa.asr_check data\outputs\ad1.wav "النص الأصلي المتوقع"
 ```
 
-> 💡 **نوع المحرك** (من تاب الإعدادات أو `TTS_ENGINE`): `remote` (Space جاهز) · `server` (GPU سحابي بتاعك) · `local` (مباشر على GPU).<br>
-> على كولاب بنستخدم `local` دايمًا — من غير كوتة ولا سيرفر.
+> 💡 **نوع المحرك** (من تاب الإعدادات أو `TTS_ENGINE`): `server` (سيرفر الموديل على كولاب) · `remote` (Space جاهز) · `local` (GPU على نفس الجهاز).
 
 ---
 
@@ -152,17 +156,17 @@
 
 | المحرك | متى تستخدمه | المتطلب |
 | --- | --- | --- |
-| `remote` (افتراضي) | تجارب سريعة، من غير كارت | إنترنت + كوتة Space |
-| `server` | **الإنتاج** — جهازك يبعت للـ GPU السحابي | سيرفر GPU (شوف `deploy/`) |
-| `local` | تشغيل على كارت NVIDIA عندك | GPU محلي (8GB+) |
+| `server` ⭐ | **المسار الرئيسي** — الموديل على كولاب والتطبيق بمفتاح | رابط + مفتاح من `deploy/colab_model_server.ipynb` |
+| `remote` | تجارب سريعة، من غير كارت | إنترنت + كوتة Space |
+| `local` | تشغيل على كارت NVIDIA عندك (أو جوّه كولاب) | GPU (8GB+) |
 
 التبديل عن طريق متغيّر البيئة `TTS_ENGINE`:
 
 ```powershell
-# يشتغل على السيرفر السحابي
+# الموديل على كولاب (المسار الرئيسي)
 $env:TTS_ENGINE = "server"
-$env:TTS_SERVER_URL = "https://xxxxx-8000.proxy.runpod.net"
-$env:TTS_SERVER_TOKEN = "التوكن"
+$env:TTS_SERVER_URL = "https://xxxx.trycloudflare.com"   # الرابط من نوتبوك كولاب
+$env:TTS_SERVER_TOKEN = "vs_..."                          # المفتاح من نوتبوك كولاب
 ```
 
 ---
@@ -177,7 +181,8 @@ $env:TTS_SERVER_TOKEN = "التوكن"
 **التفاصيل الكاملة في [`deploy/README.md`](deploy/README.md)** (RunPod + Vast.ai + Docker).
 
 ### 🆓 مجاناً (بدون بطاقة)
-- **Colab / Kaggle** — GPU T4 مجاني، والموديل **ملكنا** (من غير كوتة Space) → `deploy/colab_free_gpu.ipynb`
+- **Colab (T4 مجاني)** ⭐ — **سيرفر الموديل بمفتاح** (المسار الرئيسي) → `deploy/colab_model_server.ipynb`
+  · أو التطبيق كله على كولاب → `deploy/colab_free_gpu.ipynb`
 - **Modal** — $30/شهر رصيد لسيرفر API دائم → `deploy/modal_app.py`
 - **HF Space** — تجارب سريعة (كوتة ZeroGPU محدودة) → المحرك `remote`
 
