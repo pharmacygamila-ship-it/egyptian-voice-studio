@@ -26,6 +26,42 @@ DEFAULT_SPACE = "https://mohammedaly22-voicetut-tts.hf.space"
 LANG_AR = "العربية (Egyptian)"
 LANG_EN = "English"
 
+
+def _read_hf_token_file() -> Optional[str]:
+    """يقرأ توكن HF من مكانه القياسي (لو المستخدم عمل login قبل كده).
+
+    يدعم: `huggingface_hub.get_token()`، ثم ملفات `token` في `HF_HOME`
+    و `~/.cache/huggingface` و `~/.huggingface`.
+    """
+    try:
+        from huggingface_hub import get_token  # type: ignore
+
+        tok = get_token()
+        if tok:
+            return tok
+    except Exception:  # noqa: BLE001 - المكتبة مش متثبّتة أو فشلت
+        pass
+
+    roots = []
+    hf_home = os.getenv("HF_HOME")
+    if hf_home:
+        roots.append(hf_home)
+    home = os.path.expanduser("~")
+    roots += [
+        os.path.join(home, ".cache", "huggingface"),
+        os.path.join(home, ".huggingface"),
+    ]
+    for root in roots:
+        path = os.path.join(root, "token")
+        try:
+            with open(path, encoding="utf-8") as fh:
+                tok = fh.read().strip()
+            if tok:
+                return tok
+        except OSError:
+            continue
+    return None
+
 # بيانات الأصوات الجاهزة (الاسم → الجنس/الوسوم) — من كارت الموديل.
 _BUILTIN: dict[str, Speaker] = {
     # ذكور
@@ -62,7 +98,12 @@ class RemoteVoiceTutEngine(TTSEngine):
         self.base = base_url.rstrip("/")
         self.timeout = timeout
         self.session = requests.Session()
-        token = hf_token or os.getenv("HF_TOKEN")
+        token = (
+            hf_token
+            or os.getenv("HF_TOKEN")
+            or os.getenv("HUGGING_FACE_HUB_TOKEN")
+            or _read_hf_token_file()
+        )
         if token:
             self.session.headers["Authorization"] = f"Bearer {token}"
 

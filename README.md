@@ -36,6 +36,7 @@
 ├─ requirements-gpu.txt        مكتبات GPU
 ├─ poc_generate.py             سطر أوامر للتوليد السريع
 ├─ batch_generate.py           توليد دفعي لكل الإعلانات
+├─ set_hf_token.py             حفظ توكن Hugging Face (كوتة أعلى للـ Space)
 ├─ .env.example                مثال إعدادات
 ├─ frontend/
 │   ├─ index.html              واجهة الويب (RTL)
@@ -116,6 +117,14 @@
 .\.venv\Scripts\python.exe frontend\app_gradio.py            # http://127.0.0.1:7860
 .\.venv\Scripts\python.exe frontend\app_gradio.py --share     # رابط عام مؤقّت
 ```
+
+> 💡 **لو الكوتة المجانية للـ Space خلصت** (خطأ: «الكوتة المجانية خلصت»)، احفظ توكن Hugging Face **مرة واحدة**:
+> ```powershell
+> .\.venv\Scripts\python.exe set_hf_token.py        # الصق التوكن (مخفي) → يُحفظ في مكانه القياسي
+> .\.venv\Scripts\python.exe set_hf_token.py --check
+> ```
+> بعدها كل الأدوات (الـ API / الـ CLI / Gradio) هتلاقي التوكن لوحدها — بدون تعديل أي كود. التوكن بيتحفظ **بره الريبو** ومش بيتعمل له commit.
+> (تجيب التوكن من: https://huggingface.co/settings/tokens — النوع: Read)
 
 ---
 
