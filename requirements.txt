@@ -1,0 +1,13 @@
+# ── المكتبات الأساسية (خفيفة، تشتغل من غير GPU) ─────────────────────────
+gradio_client>=1.0
+requests>=2.31
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
+soundfile>=0.12
+numpy>=1.26
+
+# ── اختياري: للتشغيل المحلي على GPU (شيل التعليق لما يتوفر كارت NVIDIA) ──
+# torch --index-url https://download.pytorch.org/whl/cu121
+# git+https://github.com/k2-fsa/OmniVoice.git
+# voicetut-tts

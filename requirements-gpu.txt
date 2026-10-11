@@ -1,0 +1,17 @@
+# ── مكتبات التشغيل على GPU (سيرفر سحابي / محلي بكارت NVIDIA) ─────────────
+# ملحوظة: لو الصورة فيها torch بالفعل، ممكن تشيل سطر torch.
+
+--extra-index-url https://download.pytorch.org/whl/cu121
+torch>=2.2
+
+# محرك الصوت المصري (VoiceTut-TTS مبني على OmniVoice)
+git+https://github.com/k2-fsa/OmniVoice.git
+voicetut-tts
+
+# واجهة الـ API
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
+soundfile>=0.12
+numpy>=1.26
+requests>=2.31

@@ -1,0 +1,27 @@
+services:
+  tts:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: egyptian-tts:latest
+    ports:
+      - "8000:8000"
+    environment:
+      TTS_ENGINE: local
+      TTS_SERVER_TOKEN: ${TTS_SERVER_TOKEN:-}
+      HF_HOME: /models
+      TTS_OUTPUT_DIR: /outputs
+    volumes:
+      - models:/models      # كاش أوزان الموديل (تحميل مرة واحدة)
+      - outputs:/outputs
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+volumes:
+  models:
+  outputs:

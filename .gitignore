@@ -1,0 +1,20 @@
+# بيئات
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# أسرار
+.env
+
+# مخرجات صوتية وأوزان
+data/outputs/*.wav
+data/outputs/*.mp3
+data/refs/
+models/
+outputs/
+
+# لوجات
+*.log
