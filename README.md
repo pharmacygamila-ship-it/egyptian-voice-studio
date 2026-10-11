@@ -1,5 +1,7 @@
 # 🎙️ تطبيق استنساخ الصوت — عامية مصرية
 
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pharmacygamila-ship-it/egyptian-voice-studio/blob/main/deploy/colab_free_gpu.ipynb)
+
 تطبيق لإنتاج تعليق صوتي (Voice Over) للإعلانات بالعامية المصرية، مع استنساخ
 صوت العميل — مبني على **[VoiceTut-TTS](https://huggingface.co/mohammedaly22/VoiceTut-TTS)**
 (مصري أصلي + code-switching عربي↔إنجليزي + 17 صوت + استنساخ، رخصة Apache-2.0 → تجاري مسموح).
