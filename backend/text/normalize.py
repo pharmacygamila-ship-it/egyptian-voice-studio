@@ -1,13 +1,21 @@
 """تطبيع النص المصري قبل ما يروح للمحرك.
 
 الموديل عنده تطبيع داخلي (خانة Normalize)، بس الطبقة دي بتضيف حاجات
-مخصوصة للعامية المصرية والإعلانات، وبتنضّف النص قبل التوليد.
+مخصوصة للعامية المصرية والإعلانات:
 
-قابل للتوسيع — دي بداية عملية مش نهائية.
+- تفكيك الاختصارات والرموز
+- الأرقام بالكلام المصري (خمسين مش 50)
+- النطق المصري للكلمات الأجنبية (واتساب مش WhatsApp)
+- تنضيف الإيموجي والتطويل والحروف المكرّرة
+
+كل حاجة قابلة للتعديل/الإطفاء من خلال الـ parameters.
 """
 from __future__ import annotations
 
 import re
+
+from . import numbers as _numbers
+from .lexicon import apply_lexicon, expand_units
 
 # أرقام عربية شرقية → غربية
 _AR_DIGITS = str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789")
@@ -43,6 +51,15 @@ _SYMBOLS: dict[str, str] = {
 _WHITESPACE = re.compile(r"[ \t\u00a0]+")
 _MULTI_NEWLINE = re.compile(r"\n{2,}")
 
+# إيموجي ورموز زخرفية
+_EMOJI = re.compile(
+    "[\U0001f000-\U0001faff\U00002600-\U000027bf\U0000fe00-\U0000fe0f"
+    "\U00002b00-\U00002bff\U0001f1e6-\U0001f1ff\u200d\u2060\ufeff]"
+)
+
+# تطويل الحروف العربية (حلوووو → حلو)
+_ELONGATION = re.compile(r"([\u0621-\u064A])\1{2,}")
+
 # حروف تعتبر "جزء من كلمة" (عربي + لاتيني + أرقام)
 _WORDCHARS = r"0-9A-Za-z_\u0600-\u06FF"
 
@@ -53,24 +70,36 @@ def _replace_standalone(text: str, token: str, repl: str) -> str:
     return re.sub(pattern, repl, text)
 
 
-def normalize_egyptian(text: str, *, fold_digits: bool = True) -> str:
-    """تطبيع أساسي للنص المصري.
+def normalize_egyptian(
+    text: str,
+    *,
+    fold_digits: bool = True,
+    numbers: bool = True,
+    use_lexicon: bool = True,
+    clean: bool = True,
+) -> str:
+    """تطبيع النص المصري.
 
-    - يوحّد الأرقام والمسافات
-    - يفكّ الاختصارات والرموز
-    - يشيل التشكيل الزائد والتطويل
-    - يحافظ على الكلمات الإنجليزية كما هي (code-switching)
+    المعاملات:
+        fold_digits : يحوّل الأرقام الشرقية (٥) لغربية (5)
+        numbers     : يحوّل الأرقام لكلام مصري (50 → خمسين)
+        use_lexicon : يستبدل الكلمات الأجنبية بنطق مصري (واتساب)
+        clean       : يشيل الإيموجي والتطويل والحروف المكرّرة
     """
     if not text:
         return ""
 
     out = text.strip()
 
-    # تطويل
+    # تطويل صريح (ـ)
     out = out.replace("\u0640", "")
 
     if fold_digits:
         out = out.translate(_AR_DIGITS)
+
+    if clean:
+        out = _EMOJI.sub("", out)
+        out = _ELONGATION.sub(r"\1", out)
 
     # النسب المئوية: "50٪" / "50 %" → "50 في المية"
     out = re.sub(r"(\d+)\s*[٪%]", r"\1 في المية", out)
@@ -83,9 +112,19 @@ def normalize_egyptian(text: str, *, fold_digits: bool = True) -> str:
     for abbr in sorted(_ABBREVIATIONS, key=len, reverse=True):
         out = _replace_standalone(out, abbr, _ABBREVIATIONS[abbr])
 
+    if use_lexicon:
+        out = apply_lexicon(out)
+
+    # وحدات ملزوقة بالأرقام: 5kg → 5 كيلوجرام (قبل توسيع الأرقام)
+    out = expand_units(out)
+
+    if numbers:
+        out = _numbers.expand_numbers(out)
+
     # توحيد المسافات والفواصل
     out = _WHITESPACE.sub(" ", out)
     out = re.sub(r"\s+([،؛:.!?])", r"\1", out)
+    out = re.sub(r"[!?]{2,}", "!", out)
     out = _MULTI_NEWLINE.sub("\n", out)
 
     return out.strip()

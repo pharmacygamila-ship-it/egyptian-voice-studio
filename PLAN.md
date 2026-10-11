@@ -8,9 +8,11 @@
 ## 0) الحالة الحالية (محدّثة)
 
 - ✅ تم تثبيت Python 3.12 + بيئة `.venv`.
-- ✅ تم بناء المشروع: محركات (Space أونلاين / سيرفر GPU / محلي) + API + تطبيع نص + معالجة صوت.
+- ✅ تم بناء المشروع: 3 محركات (Space / سيرفر GPU / محلي) + مصنع محركات + API + معالجة صوت.
+- ✅ **طبقة نص مصري متقدمة**: أرقام بالكلام (خمسين/ألفين) + نطق الأجنبي + وحدات + تنضيف إيموجي/تطويل (`backend/text/`).
+- ✅ توليد دفعي (`batch_generate.py`) + خيارات مجانية: Colab (`deploy/colab_free_gpu.ipynb`) و Modal (`deploy/modal_app.py`).
 - ✅ تم توليد أول صوت مصري حقيقي: `data/outputs/ads_sample_01_Sayed.wav`.
-- ✅ الاختبارات ناجحة: `tests/selfcheck.py` + `tests/check_http.py`.
+- ✅ الاختبارات ناجحة: `tests/selfcheck.py` + `tests/test_text.py` (40 اختبار) + `tests/check_http.py`.
 - ✅ جاهزية النشر على GPU سحابي: `Dockerfile` + `deploy/`.
 - ⏭️ **القرار:** التشغيل الإنتاجي على **GPU سحابي** (RunPod/Vast) — راجع `deploy/README.md`.
 
@@ -109,7 +111,7 @@ SILMA TTS v1 (عربي/إنجليزي، أقرب للفصحى)، ElevenLabs v3 (
 ├─ requirements.txt
 ├─ backend/
 │   ├─ main.py            FastAPI endpoints
-│   ├─ text/              normalization + diacritization + قاموس النطق
+│   ├─ text/              normalization + numbers + lexicon + diacritization
 │   ├─ engine/            wrapper لـ VoiceTut + بدائل
 │   ├─ audio/             معالجة الصوت (loudness/EQ/trim)
 │   └─ voices/            embeddings + مقاطع مرجعية

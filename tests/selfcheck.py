@@ -31,7 +31,8 @@ def check(label: str, cond: bool) -> None:
 # 1) تطبيع النص
 sample = "خصم ٥٠٪ النهاردة & بكرة، اتصل على 0100  @  الفرع"
 norm = normalize_egyptian(sample)
-check("normalize: أرقام غربية", "50" in norm and "٥٠" not in norm)
+check("normalize: تحويل الأرقام الشرقية", normalize_egyptian("٥٠", numbers=False) == "50")
+check("normalize: الرقم اتكتب حروف", "خمسين" in norm and "50" not in norm)
 check("normalize: الرمز & اتحوّل", "&" not in norm and "و" in norm)
 check("normalize: مسافات متعددة اتظبطت", "  " not in norm)
 check("normalize: النسبة اتكتبت كلام", "في المية" in norm and "٪" not in norm)

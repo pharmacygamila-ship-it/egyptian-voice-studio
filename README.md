@@ -40,7 +40,10 @@
 │   │   ├─ remote_voicetut.py  محرك أونلاين (الـ Space)
 │   │   ├─ server_client.py    عميل سيرفر GPU بتاعنا
 │   │   └─ local_voicetut.py   محرك محلي/GPU
-│   ├─ text/normalize.py       تطبيع النص المصري
+│   ├─ text/
+│   │   ├─ normalize.py        تطبيع النص المصري (المدخل الرئيسي)
+│   │   ├─ numbers.py          الأرقام → كلام مصري (خمسين / ألفين…)
+│   │   └─ lexicon.py          نطق الأجنبي + الوحدات (واتساب / كيلوجرام)
 │   └─ audio/postprocess.py    معالجة صوت إعلانية
 ├─ deploy/
 │   ├─ README.md               خطوات RunPod / Vast.ai / Docker / Colab / Modal
@@ -51,6 +54,7 @@
 │   └─ modal_app.py            نشر على Modal (رصيد مجاني)
 ├─ tests/
 │   ├─ selfcheck.py            فحص المكونات
+│   ├─ test_text.py            فحص طبقة النص المصري (أرقام/نطق/تنضيف)
 │   └─ check_http.py           فحص السيرفر والعميل
 └─ data/
     ├─ scripts/                نصوص الإعلانات
@@ -145,10 +149,37 @@ $env:TTS_SERVER_TOKEN = "التوكن"
 
 ---
 
+## 🗣️ طبقة النص المصري
+
+كل نص بيمر على `backend/text/normalize.py` قبل التوليد:
+
+| الخطوة | مثال |
+| --- | --- |
+| أرقام شرقية → غربية | `٥٠` → `50` |
+| أرقام → كلام مصري | `50` → **خمسين** · `2026` → **ألفين وستة وعشرين** |
+| أرقام طويلة (تليفون) رقم رقم | `01001234567` → **صفر واحد صفر…** |
+| أوقات / كسور | `3:30` → **تلاتة وتلاتين** · `3.5` → **تلاتة فاصلة خمسة** |
+| نسب | `50%` → **خمسين في المية** |
+| نطق الأجنبي | `WhatsApp` → **واتساب** · `order` → **أوردر** |
+| وحدات ملزوقة | `5kg` → **خمسة كيلوجرام** |
+| تنضيف | إيموجي + تطويل (`حلوووو` → `حلو`) |
+
+التحكم:
+```python
+from backend.text.normalize import normalize_egyptian
+normalize_egyptian("خصم 50%")                       # → "خصم خمسين في المية"
+normalize_egyptian("٥٠", numbers=False)             # → "50"  (من غير كلام)
+normalize_egyptian("WhatsApp", use_lexicon=False)   # → "WhatsApp"
+```
+
+**تعديل القاموس:** `backend/text/lexicon.py` (كلمات أجنبية/وحدات) و `backend/text/numbers.py` (صيغ الأرقام).
+
+---
+
 ## 📋 الخطوات الجاية
 
 1. توفير GPU (محلي أو سحابي) → تشغيل `LocalVoiceTutEngine`.
-2. توسيع `backend/text/normalize.py` (قواميس نطق أسماء/كلمات أجنبية + تشكيل الكلمات الملتبسة).
+2. تشكيل الكلمات الملتبسة (diacritization) + توسيع قاموس الأسماء والبراندات.
 3. إضافة `pyloudnorm` لمعالجة EBU R128 (-14 LUFS).
 4. مسار fine-tune لاستنساخ «نفس الأداء الصوتي» من تسجيلات العميل.
 5. واجهة مستخدم (Gradio / Next.js).
