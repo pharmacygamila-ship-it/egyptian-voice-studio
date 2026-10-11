@@ -43,7 +43,10 @@ FALLBACK_SPEAKERS = [
     "Asmaa", "Esraa", "Hanan", "Sarah", "Omnia",
 ]
 
-RTL_CSS = ".gradio-container { direction: rtl; text-align: right; }"
+RTL_CSS = (
+    ".gradio-container { direction: rtl; text-align: right; } "
+    "footer { display: none !important; }"
+)
 
 _ENGINE = None
 
