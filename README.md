@@ -14,6 +14,7 @@
 - ✅ محرك أونلاين شغّال (`RemoteVoiceTutEngine`) → يولّد صوت فوراً **من غير GPU**.
 - ✅ معمارية **عميل/سيرفر** جاهزة للـ GPU السحابي (`ServerVoiceTutEngine` + `deploy/`).
 - ✅ نموذج صوت جاهز: `data/outputs/ads_sample_01_Sayed.wav`
+- ✅ تشكيل اختياري (`diacritics.py`) + قاموس نطق موسّع للبراندات والشركات — `tests/test_text.py` (48 اختبار).
 - ✅ كل الاختبارات ناجحة: `tests/selfcheck.py` و `tests/check_http.py`
 - ⚠️ كارت الشاشة الحالي (AMD 2GB) مش بينفع → للإنتاج نشغّل على **GPU سحابي** (شوف `deploy/README.md`).
 
@@ -25,6 +26,8 @@
 اعلانات 2/
 ├─ PLAN.md                     الخطة الكاملة
 ├─ README.md                   الدليل ده
+├─ LICENSE                     رخصة Apache-2.0
+├─ publish.ps1                 نشر الريبو على GitHub بأمر واحد
 ├─ Dockerfile                  صورة GPU جاهزة
 ├─ requirements.txt            مكتبات محلية (خفيفة)
 ├─ requirements-gpu.txt        مكتبات GPU
@@ -43,7 +46,8 @@
 │   ├─ text/
 │   │   ├─ normalize.py        تطبيع النص المصري (المدخل الرئيسي)
 │   │   ├─ numbers.py          الأرقام → كلام مصري (خمسين / ألفين…)
-│   │   └─ lexicon.py          نطق الأجنبي + الوحدات (واتساب / كيلوجرام)
+│   │   ├─ lexicon.py          نطق الأجنبي + الوحدات (واتساب / كيلوجرام)
+│   │   └─ diacritics.py       تشكيل كلمات ملتبسة (اختياري)
 │   └─ audio/postprocess.py    معالجة صوت إعلانية
 ├─ deploy/
 │   ├─ README.md               خطوات RunPod / Vast.ai / Docker / Colab / Modal
@@ -62,7 +66,9 @@
 │   ├─ test_text.py            فحص طبقة النص المصري (أرقام/نطق/تنضيف)
 │   ├─ test_audio.py           فحص المعالجة الصوتية (LUFS/de-esser/high-pass)
 │   ├─ test_finetune.py        فحص تجهيز داتاسِت fine-tune
-│   └─ check_http.py           فحص السيرفر والعميل
+│   ├─ check_http.py           فحص السيرفر والعميل
+│   └─ run_all.py              يشغّل كل الاختبارات مرة واحدة
+├─ .github/workflows/tests.yml CI على GitHub
 └─ data/
     ├─ scripts/                نصوص الإعلانات
     └─ outputs/                الأصوات المُولّدة
@@ -169,17 +175,19 @@ $env:TTS_SERVER_TOKEN = "التوكن"
 | نسب | `50%` → **خمسين في المية** |
 | نطق الأجنبي | `WhatsApp` → **واتساب** · `order` → **أوردر** |
 | وحدات ملزوقة | `5kg` → **خمسة كيلوجرام** |
+| تشكيل كلمات ملتبسة (اختياري) | `عرض` → **عَرْض** · `خصم` → **خَصْم** |
 | تنضيف | إيموجي + تطويل (`حلوووو` → `حلو`) |
 
 التحكم:
 ```python
 from backend.text.normalize import normalize_egyptian
-normalize_egyptian("خصم 50%")                       # → "خصم خمسين في المية"
-normalize_egyptian("٥٠", numbers=False)             # → "50"  (من غير كلام)
-normalize_egyptian("WhatsApp", use_lexicon=False)   # → "WhatsApp"
+normalize_egyptian("خصم 50%")                        # → "خصم خمسين في المية"
+normalize_egyptian("٥٠", numbers=False)              # → "50"  (من غير كلام)
+normalize_egyptian("WhatsApp", use_lexicon=False)    # → "WhatsApp"
+normalize_egyptian("خصم 50", diacritics=True)        # → "خَصْم خمسين"
 ```
 
-**تعديل القاموس:** `backend/text/lexicon.py` (كلمات أجنبية/وحدات) و `backend/text/numbers.py` (صيغ الأرقام).
+**تعديل القواميس:** `backend/text/lexicon.py` (كلمات أجنبية/وحدات) و `backend/text/numbers.py` (صيغ الأرقام) و `backend/text/diacritics.py` (التشكيل).
 
 ---
 
@@ -207,13 +215,27 @@ print(analyze("out.wav"))   # {"sr":48000,"seconds":..,"lufs":-14.0,"peak_dbfs":
 
 ---
 
+## 🐙 النشر على GitHub
+
+الريبو جاهز للنشر (رخصة Apache-2.0 + CI + توحيد نهايات الأسطر).
+
+```powershell
+# 1) أنشئ ريبو فاضي على GitHub (من غير README) ← من الموقع
+# 2) انشره بأمر واحد:
+.\publish.ps1 -RepoUrl "https://github.com/USERNAME/REPO.git"
+```
+
+CI بيشغّل كل الاختبارات تلقائياً على كل push (`.github/workflows/tests.yml`).
+
+---
+
 ## 📋 الخطوات الجاية
 
 1. توفير GPU (محلي أو سحابي) → تشغيل `LocalVoiceTutEngine`.
-2. تشكيل الكلمات الملتبسة (diacritization) + توسيع قاموس الأسماء والبراندات.
-3. مسار fine-tune لاستنساخ «نفس الأداء الصوتي» من تسجيلات العميل.
-4. LGPL/إضافات: تصدير MP3 + EQ متعدد النطاقات (multiband compressor).
-5. واجهة مستخدم متقدمة (Gradio / Next.js).
+2. ✅ قاموس البراندات/الشركات المصرية + تشكيل الكلمات الملتبسة (`backend/text/`).
+3. ✅ مسار fine-tune لاستنساخ «نفس الأداء الصوتي» (`finetune/`) — يتبقى تركيب API التدريب الرسمي.
+4. تصدير MP3 + EQ متعدد النطاقات (multiband compressor).
+5. واجهة متقدمة (Gradio / Next.js) + رفع الريبو على GitHub.
 
 ---
 

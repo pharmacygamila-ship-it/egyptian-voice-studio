@@ -1,0 +1,14 @@
+# توحيد نهايات الأسطر (يمنع تحذيرات CRLF/LF بين ويندوز ولينكس)
+* text=auto eol=lf
+
+# ملفات ثنائية
+*.wav binary
+*.mp3 binary
+*.flac binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+
+# نوتبوك ينفع يتعامل كنص
+*.ipynb text eol=lf

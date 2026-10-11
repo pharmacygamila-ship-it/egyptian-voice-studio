@@ -21,3 +21,7 @@ data/refs/
 
 # حزم مُولّدة
 dist/
+
+# بيانات fine-tune (صوت العميل + الأوزان)
+finetune/dataset/
+finetune/runs/
