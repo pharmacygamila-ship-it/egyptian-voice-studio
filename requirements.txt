@@ -10,6 +10,9 @@ scipy>=1.11
 pyloudnorm>=0.1.1
 lameenc>=1.7
 
+# ── واجهة Gradio (اختيارية) ──────────────────────────────────────────────
+gradio>=4.44
+
 # ── اختياري: للتشغيل المحلي على GPU (شيل التعليق لما يتوفر كارت NVIDIA) ──
 # torch --index-url https://download.pytorch.org/whl/cu121
 # git+https://github.com/k2-fsa/OmniVoice.git

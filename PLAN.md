@@ -14,8 +14,9 @@
 - ✅ **معالجة صوت بجودة بث**: EBU R128 (-14 LUFS) + de-esser + high-pass + true-peak + **ضغط/EQ متعدد النطاقات** (voice/warm/punch/broadcast) + **تصدير MP3** بدون ffmpeg (`backend/audio/`).
 - ✅ **مسار fine-tune**: تجهيز داتاسِت (مختبر) + سكربت LoRA + دليل تسجيل (`finetune/`).
 - ✅ توليد دفعي (`batch_generate.py`) + خيارات مجانية: Colab (`deploy/colab_free_gpu.ipynb`) و Modal (`deploy/modal_app.py`).
+- ✅ واجهة Gradio للتوليد/الاستنساخ (`frontend/app_gradio.py`) + تصدير MP3 + ضغط متعدد النطاقات.
 - ✅ تم توليد أول صوت مصري حقيقي: `data/outputs/ads_sample_01_Sayed.wav`.
-- ✅ الاختبارات ناجحة: `selfcheck` + `test_text` (48) + `test_audio` (28) + `test_finetune` (17) + `check_http`.
+- ✅ الاختبارات ناجحة: `selfcheck` + `test_text` (48) + `test_audio` (28) + `test_finetune` (17) + `test_gradio` (16) + `check_http`.
 - ✅ جاهزية النشر على GPU سحابي: `Dockerfile` + `deploy/`.
 - ⏭️ **القرار:** التشغيل الإنتاجي على **GPU سحابي** (RunPod/Vast) — راجع `deploy/README.md`.
 

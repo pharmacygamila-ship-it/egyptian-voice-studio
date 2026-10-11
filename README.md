@@ -34,7 +34,9 @@
 ├─ poc_generate.py             سطر أوامر للتوليد السريع
 ├─ batch_generate.py           توليد دفعي لكل الإعلانات
 ├─ .env.example                مثال إعدادات
-├─ frontend/index.html         واجهة الويب (RTL)
+├─ frontend/
+│   ├─ index.html              واجهة الويب (RTL)
+│   └─ app_gradio.py           واجهة Gradio (اختيارية)
 ├─ backend/
 │   ├─ main.py                 FastAPI (/health /voices /tts /clone) + حماية توكن
 │   ├─ engine/
@@ -68,6 +70,7 @@
 │   ├─ test_text.py            فحص طبقة النص المصري (أرقام/نطق/تنضيف)
 │   ├─ test_audio.py           فحص المعالجة الصوتية (LUFS/de-esser/high-pass)
 │   ├─ test_finetune.py        فحص تجهيز داتاسِت fine-tune
+│   ├─ test_gradio.py          فحص واجهة Gradio
 │   ├─ check_http.py           فحص السيرفر والعميل
 │   └─ run_all.py              يشغّل كل الاختبارات مرة واحدة
 ├─ .github/workflows/tests.yml CI على GitHub
@@ -99,10 +102,17 @@
 ```
 - `GET  /health`  → حالة المحرك
 - `GET  /voices`  → الأصوات الجاهزة
-- `POST /tts`     → JSON: `{ "text": "...", "speaker": "Sayed" }`
-- `POST /clone`   → multipart: `text`, `ref_audio`, `ref_text`
+- `POST /tts`     → JSON: `{ "text": "...", "speaker": "Sayed", "multiband": "voice", "fmt": "mp3" }`
+- `POST /clone`   → multipart: `text`, `ref_audio`, `ref_text`, `multiband`, `fmt`
 
 ثم افتح الواجهة في المتصفح: **http://127.0.0.1:8000/**
+
+### 3) واجهة Gradio (اختيارية)
+بديل جاهز للعرض/التسليم للعميل (توليد + استنساخ + كل الإعدادات):
+```powershell
+.\.venv\Scripts\python.exe frontend\app_gradio.py            # http://127.0.0.1:7860
+.\.venv\Scripts\python.exe frontend\app_gradio.py --share     # رابط عام مؤقّت
+```
 
 ---
 
@@ -243,7 +253,7 @@ CI بيشغّل كل الاختبارات تلقائياً على كل push (`.g
 2. ✅ قاموس البراندات/الشركات المصرية + تشكيل الكلمات الملتبسة (`backend/text/`).
 3. ✅ مسار fine-tune لاستنساخ «نفس الأداء الصوتي» (`finetune/`) — يتبقى تركيب API التدريب الرسمي.
 4. ✅ تصدير MP3 + ضغط/EQ متعدد النطاقات (`backend/audio/`).
-5. واجهة متقدمة (Gradio / Next.js) + رفع الريبو على GitHub.
+5. ✅ واجهة Gradio (`frontend/app_gradio.py`) + الريبو مرفوع على GitHub.
 
 ---
 

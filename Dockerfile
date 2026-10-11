@@ -16,7 +16,7 @@ WORKDIR /app
 
 # مكتبات الـ API (خفيفة)
 RUN pip install --no-cache-dir \
-        fastapi "uvicorn[standard]" python-multipart soundfile numpy scipy pyloudnorm requests lameenc
+        fastapi "uvicorn[standard]" python-multipart soundfile numpy scipy pyloudnorm requests lameenc gradio
 
 # محرك الصوت المصري
 RUN pip install --no-cache-dir git+https://github.com/k2-fsa/OmniVoice.git \
