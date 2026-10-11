@@ -151,6 +151,46 @@ def header_md() -> str:
 
 
 # ── النص ─────────────────────────────────────────────────────────────────
+COLAB_SERVER_NB = (
+    "https://colab.research.google.com/github/pharmacygamila-ship-it/"
+    "egyptian-voice-studio/blob/main/deploy/colab_model_server.ipynb"
+)
+
+CONNECT_GUIDE = (
+    "🔌 **الحل: وصّل سيرفر الموديل** — شغّل نوتبوك كولاب بالزر ده (مفتوح جديد):\n"
+    f"{COLAB_SERVER_NB}\n\n"
+    "1. من فوق: `Runtime` → `Change runtime type` → اختر **T4 GPU** → `Save`\n"
+    "2. اضغط **تشغيل** أو `Shift+Enter` على كل خلية بالترتيب (خليهم كلهم يخلصوا)\n"
+    "3. في آخر خلية هتلاقي **🔗 رابط السيرفر** و **🔑 المفتاح** — انسخهم\n"
+    "4. ارجع هنا → تبويب **⚙️ الإعدادات** → نوع المحرك = `server` → الصق الرابط والمفتاح → "
+    "**🔌 اختبار الاتصال** → ولما يقول ناجح اضغط **✅ تطبيق وتشغيل**\n\n"
+    "💡 أبسط بديل: شغّل نوتبوك «كل حاجة على كولاب» وحتلاقي نفس التطبيق ده برابط عام:\n"
+    "https://colab.research.google.com/github/pharmacygamila-ship-it/"
+    "egyptian-voice-studio/blob/main/deploy/colab_free_gpu.ipynb"
+)
+
+
+def friendly_error(exc: Exception) -> str:
+    """رسالة خطأ واضحة حسب نوع المحرك (مش مصطلحات فنية)."""
+    msg = str(exc)
+    kind = (store.load_settings().get("engine") or "remote").lower()
+    if kind == "remote":
+        return (
+            "❌ **المودل الأونلاين المجاني خلصت كوته** — دي مشكلة في الناحية التانية "
+            "(خارج سيطرتك)، ومش هتتحل بانتظار.\n\n" + CONNECT_GUIDE
+        )
+    if kind == "server":
+        return (
+            "❌ **مش عارف أوصل لسيرفر الموديل**.\n\n"
+            "🔧 تحقق بالترتيب:\n"
+            "1. نوتبوك كولاب (سيرفر الموديل) **لسه شغّال** ومش مقفول/مقطوع؟\n"
+            "2. الرابط والمفتاح **منسوخين صح** في ⚙️ الإعدادات؟\n"
+            "3. اضغط **🔌 اختبار الاتصال** في ⚙️ الإعدادات — شوف بيقول إيه.\n\n"
+            f"الرسالة الفنية: {msg}"
+        )
+    return "❌ " + msg
+
+
 def prepare_text(text: str, normalize: bool, diacritics: bool) -> str:
     """تطبيع النص المصري (نفس منطق الـ API) + قاموس المستخدم."""
     if not normalize:
@@ -211,7 +251,7 @@ def synth_ui(
     try:
         path = get_engine().synthesize(req, out)
     except Exception as exc:  # noqa: BLE001
-        raise gr.Error(f"فشل التوليد: {exc}") from exc
+        raise gr.Error(friendly_error(exc)) from exc
     return _finish(path, postprocess_on, lufs, multiband, fmt,
                    target_sr=target_sr, mp3_bitrate=mp3_bitrate)
 
@@ -236,7 +276,7 @@ def simple_synth(text, speaker, steps, guidance, speed):
     try:
         path = get_engine().synthesize(req, out)
     except Exception as exc:  # noqa: BLE001
-        raise gr.Error(f"فشل التوليد: {exc}") from exc
+        raise gr.Error(friendly_error(exc)) from exc
     path = postprocess(
         path,
         target_lufs=-14.0,
@@ -275,7 +315,7 @@ def clone_ui(
     try:
         path = get_engine().clone(req, out)
     except Exception as exc:  # noqa: BLE001
-        raise gr.Error(f"فشل الاستنساخ: {exc}") from exc
+        raise gr.Error(friendly_error(exc)) from exc
     return _finish(path, postprocess_on, lufs, multiband, fmt,
                    target_sr=target_sr, mp3_bitrate=mp3_bitrate)
 
