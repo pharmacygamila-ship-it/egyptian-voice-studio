@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 
 from backend.audio.postprocess import postprocess
 from backend.engine.base import SynthRequest, TTSEngine
-from backend.engine.remote_voicetut import RemoteVoiceTutEngine
+from backend.engine.factory import build_engine
 from backend.text.normalize import normalize_egyptian
 
 OUTPUT_DIR = os.getenv("TTS_OUTPUT_DIR", os.path.join("data", "outputs"))
@@ -31,20 +31,7 @@ def require_token(x_auth_token: str | None = Header(default=None)) -> None:
         raise HTTPException(status_code=401, detail="توكن غير صحيح")
 
 
-def _build_engine() -> TTSEngine:
-    which = os.getenv("TTS_ENGINE", "remote").lower()
-    if which == "local":
-        from backend.engine.local_voicetut import LocalVoiceTutEngine
-
-        return LocalVoiceTutEngine()
-    if which == "server":
-        from backend.engine.server_client import ServerVoiceTutEngine
-
-        return ServerVoiceTutEngine()
-    return RemoteVoiceTutEngine()
-
-
-engine = _build_engine()
+engine: TTSEngine = build_engine()
 app = FastAPI(title="Egyptian Voice Clone API", version="0.1.0")
 
 

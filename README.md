@@ -29,22 +29,26 @@
 ├─ requirements.txt            مكتبات محلية (خفيفة)
 ├─ requirements-gpu.txt        مكتبات GPU
 ├─ poc_generate.py             سطر أوامر للتوليد السريع
+├─ batch_generate.py           توليد دفعي لكل الإعلانات
 ├─ .env.example                مثال إعدادات
 ├─ frontend/index.html         واجهة الويب (RTL)
 ├─ backend/
 │   ├─ main.py                 FastAPI (/health /voices /tts /clone) + حماية توكن
 │   ├─ engine/
 │   │   ├─ base.py             الواجهة المشتركة
+│   │   ├─ factory.py          اختيار المحرك (TTS_ENGINE)
 │   │   ├─ remote_voicetut.py  محرك أونلاين (الـ Space)
 │   │   ├─ server_client.py    عميل سيرفر GPU بتاعنا
 │   │   └─ local_voicetut.py   محرك محلي/GPU
 │   ├─ text/normalize.py       تطبيع النص المصري
 │   └─ audio/postprocess.py    معالجة صوت إعلانية
 ├─ deploy/
-│   ├─ README.md               خطوات RunPod / Vast.ai / Docker
+│   ├─ README.md               خطوات RunPod / Vast.ai / Docker / Colab / Modal
 │   ├─ setup_gpu.sh            تجهيز بيئة GPU
 │   ├─ run_server.sh           تشغيل السيرفر
-│   └─ docker-compose.yml
+│   ├─ docker-compose.yml
+│   ├─ colab_free_gpu.ipynb    Notebook للـ Colab المجاني
+│   └─ modal_app.py            نشر على Modal (رصيد مجاني)
 ├─ tests/
 │   ├─ selfcheck.py            فحص المكونات
 │   └─ check_http.py           فحص السيرفر والعميل
@@ -120,6 +124,18 @@ $env:TTS_SERVER_TOKEN = "التوكن"
 3. من جهازك: `TTS_ENGINE=server` + الرابط + التوكن.
 
 **التفاصيل الكاملة في [`deploy/README.md`](deploy/README.md)** (RunPod + Vast.ai + Docker).
+
+### 🆓 مجاناً (بدون بطاقة)
+- **Colab / Kaggle** — GPU T4 مجاني للتوليد الدفعي → `deploy/colab_free_gpu.ipynb`
+- **Modal** — $30/شهر رصيد لسيرفر API دائم → `deploy/modal_app.py`
+- **HF Space** — تجارب سريعة (كوتة محدودة) → المحرك `remote`
+
+### 🔁 توليد دفعي
+```powershell
+# محلياً (عبر السيرفر) أو على Colab/Kaggle (محرك محلي)
+.\.venv\Scripts\python.exe batch_generate.py --speaker Sayed --zip ads.zip
+```
+سمّي الملف `ad2__Yasmin.txt` لو عايز صوت مختلف لكل إعلان.
 
 ### كوتة الـ Space المجاني
 النسخة المجانية (ZeroGPU) بكوتة محدودة وممكن ترفض الطلبات. حلول:

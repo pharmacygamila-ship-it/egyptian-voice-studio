@@ -12,6 +12,32 @@ TTS_ENGINE=server        TTS_ENGINE=local
 
 ---
 
+## 🆓 خيارات مجانية (بدون بطاقة)
+
+| الخيار | إيه اللي تاخده | مناسب لإيه | الملف |
+| --- | --- | --- | --- |
+| **Google Colab** | GPU T4 مجاناً (~15–30 س/أسبوع) | توليد دفعي (مش سيرفر دائم) | `colab_free_gpu.ipynb` |
+| **Kaggle** | ~30 س GPU/أسبوع | نفس الاستخدام | نفس الـ notebook |
+| **Modal** | **$30/شهر** رصيد | سيرفر API مجاني دائم | `modal_app.py` |
+
+### 1) Colab — ولّد إعلاناتك مجاناً
+1. افتح [colab.research.google.com](https://colab.research.google.com) → `File` → `Upload notebook` → ارفع `deploy/colab_free_gpu.ipynb`
+2. `Runtime` → `Change runtime type` → **T4 GPU**
+3. شغّل الخلايا بالترتيب → هيولّد الإعلانات وينزّلك `ads.zip`
+
+### 2) Modal — سيرفر API مجاني (serverless)
+```bash
+pip install modal
+modal setup
+modal secret create tts-token TTS_SERVER_TOKEN=$(openssl rand -hex 24)
+modal deploy deploy/modal_app.py
+```
+هيديك رابط `https://...modal.run` تستخدمه مع `TTS_ENGINE=server` زي أي سيرفر تاني.
+
+> ⚠️ Colab بتوفّر GPU للتجارب، **بس** شروطها بتمنع تشغيلها كسيرفر/نفق دائم — للـ API الدائم استخدم **Modal** أو **RunPod**.
+
+---
+
 ## الطريقة أ: RunPod (الأسهل)
 
 1. **اعمل حساب** على [runpod.io](https://runpod.io) وأضف رصيد (يبدأ من ~$10).
