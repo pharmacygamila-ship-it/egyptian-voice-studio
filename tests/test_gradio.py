@@ -29,6 +29,11 @@ if not HAS_GRADIO:
     print("[SKIP] gradio مش مثبّت — تخطّي اختبار الواجهة")
     raise SystemExit(0)
 
+# لازم قبل استيراد التطبيق عشان الإعدادات/القاموس مايفضلوش من الريبو
+tmp = tempfile.mkdtemp(prefix="tts_gradio_")
+os.environ["TTS_OUTPUT_DIR"] = tmp
+os.environ["TTS_DATA_DIR"] = tmp
+
 from frontend import app_gradio as app  # noqa: E402
 
 ok = True
@@ -68,9 +73,6 @@ class FakeEngine:
         sf.write(out, tone(24000), 24000)
         return out
 
-
-tmp = tempfile.mkdtemp(prefix="tts_gradio_")
-os.environ["TTS_OUTPUT_DIR"] = tmp
 
 # ── 1) helpers نقية ──────────────────────────────────────────────────────
 def _bare(s: str) -> str:
@@ -126,6 +128,48 @@ except Exception:  # noqa: BLE001
 
 # ── 5) list_speakers من المحرك ───────────────────────────────────────────
 check("list_speakers: من المحرك", app.list_speakers() == ["Sayed", "Yasmin"])
+
+# ── 6) القاموس (حفظ/تحميل) ───────────────────────────────────────────────
+from backend import store  # noqa: E402
+
+check("store: بيستخدم مجلد بيانات مؤقّت", os.path.abspath(store.DATA_DIR) == os.path.abspath(tmp))
+msg, rows = app.lexicon_save([["Ziad", "زياد"], ["Nescafe", "نِسْكافِيه"], ["", ""]])
+check("lexicon_save: رسالة نجاح", "اتحفظ" in msg)
+check("lexicon_save: تجاهل الصفوف الفاضية", len(store.load_lexicon()) == 2)
+check("lexicon_load: يرجّع صفوف", ["Ziad", "زياد"] in app.lexicon_load())
+
+# ── 7) prepare_text مع القاموس ───────────────────────────────────────────
+_prep = app.prepare_text("من Ziad", True, False)
+check("prepare_text: تطبيق قاموس المستخدم", "زياد" in _prep)
+
+# ── 8) التوليد الدفعي ────────────────────────────────────────────────────
+for nm, body in [("ad1__Sayed", "عرض النهاردة"), ("ad2__Yasmin", "خصم 50")]:
+    with open(os.path.join(tmp, nm + ".txt"), "w", encoding="utf-8") as fh:
+        fh.write(body)
+zip_path, rep = app.batch_ui(
+    [os.path.join(tmp, "ad1__Sayed.txt"), os.path.join(tmp, "ad2__Yasmin.txt")],
+    "Sayed", 32, 2.5, 0.95, True, False, True, -14, "", "mp3",
+)
+check("batch_ui: zip اتعمل", os.path.exists(zip_path) and zip_path.endswith(".zip"))
+check("batch_ui: التقرير فيه الإعلانين", "ad1" in rep and "ad2" in rep)
+check("batch_ui: اسم__الصوت اشتغل", "Yasmin" in rep)
+
+# ── 9) فاحص النطق: التحقق من المدخلات ────────────────────────────────────
+for label, args in [
+    ("بدون صوت", (None, "نص", "tiny")),
+    ("بدون نص", (os.path.join(tmp, "x.wav"), "", "tiny")),
+]:
+    try:
+        app.qa_ui(*args)
+        check(f"qa_ui: يرفض {label}", False)
+    except Exception:  # noqa: BLE001
+        check(f"qa_ui: يرفض {label}", True)
+
+# ── 10) الإعدادات: تطبيق محرك ───────────────────────────────────────────
+status, upd = app.apply_engine_settings("remote", "", "", "", "cuda", "Sayed")
+check("apply_engine_settings: يرجّع حالة", isinstance(status, str) and len(status) > 0)
+check("apply_engine_settings: حفظ الإعدادات", store.load_settings()["engine"] == "remote")
+app._ENGINE = FakeEngine()  # نرجّع المحرك الوهمي
 
 print(f"\n==> {total} اختبار |", "كله تمام ✅" if ok else "فيه فشل ❌")
 raise SystemExit(0 if ok else 1)

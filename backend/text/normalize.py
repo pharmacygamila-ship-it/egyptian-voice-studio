@@ -183,12 +183,25 @@ def normalize_for_tts(
         out = _WHITESPACE.sub(" ", out)
         return out.strip()
 
-    return normalize_egyptian(
+    out = normalize_egyptian(
         text,
         numbers=numbers,
         diacritics=diacritics,
         clean=clean,
     )
+    if lexicon:
+        out = _apply_lexicon_replace(out, lexicon)
+    return out
+
+
+def _apply_lexicon_replace(text: str, lexicon: dict[str, str]) -> str:
+    """تبديل كلمات القاموس المخصّص (كلمة كاملة، مع تجاهل حالة الأحرف)."""
+    for source, target in sorted(lexicon.items(), key=lambda kv: -len(kv[0])):
+        if not source:
+            continue
+        pattern = rf"(?<![{_WORDCHARS}]){re.escape(source)}(?![{_WORDCHARS}])"
+        text = re.sub(pattern, target, text, flags=re.IGNORECASE)
+    return text
 
 
 def split_sentences(text: str, max_chars: int = 300) -> list[str]:

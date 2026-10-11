@@ -44,17 +44,21 @@
 ├─ .env.example                مثال إعدادات
 ├─ frontend/
 │   ├─ index.html              واجهة الويب (RTL)
-│   └─ app_gradio.py           واجهة Gradio (اختيارية)
+│   └─ app_gradio.py           التطبيق (مركز تحكم كامل: توليد/استنساخ/دفعي/فحص/قاموس/إعدادات)
 ├─ backend/
 │   ├─ main.py                 FastAPI (/health /voices /tts /clone) + حماية توكن
+│   ├─ store.py                حفظ الإعدادات + قاموس النطق (JSON محلي)
 │   ├─ engine/
 │   │   ├─ base.py             الواجهة المشتركة
 │   │   ├─ factory.py          اختيار المحرك (TTS_ENGINE)
 │   │   ├─ remote_voicetut.py  محرك أونلاين (الـ Space)
 │   │   ├─ server_client.py    عميل سيرفر GPU بتاعنا
 │   │   └─ local_voicetut.py   محرك محلي/GPU
+│   ├─ qa/
+│   │   └─ asr_check.py        فاحص النطق (ASR + مقارنة بالحرف)
 │   ├─ text/
-│   │   ├─ normalize.py        تطبيع النص المصري (المدخل الرئيسي)
+│   │   ├─ normalize.py        تطبيع النص (normalize_for_tts = المدخل الرئيسي)
+│   │   ├─ voicetut_norm.py    طبقة تطبيع الموديل (أرقام/تواريخ/تشكيل) — CPU
 │   │   ├─ numbers.py          الأرقام → كلام مصري (خمسين / ألفين…)
 │   │   ├─ lexicon.py          نطق الأجنبي + الوحدات (واتساب / كيلوجرام)
 │   │   └─ diacritics.py       تشكيل كلمات ملتبسة (اختياري)
@@ -78,7 +82,8 @@
 │   ├─ test_text.py            فحص طبقة النص المصري (أرقام/نطق/تنضيف)
 │   ├─ test_audio.py           فحص المعالجة الصوتية (LUFS/de-esser/high-pass)
 │   ├─ test_finetune.py        فحص تجهيز داتاسِت fine-tune
-│   ├─ test_gradio.py          فحص واجهة Gradio
+│   ├─ test_gradio.py          فحص التطبيق (توليد/دفعي/قاموس/إعدادات)
+│   ├─ test_qa.py              فحص فاحص النطق (مقارنة الحروف)
 │   ├─ check_http.py           فحص السيرفر والعميل
 │   └─ run_all.py              يشغّل كل الاختبارات مرة واحدة
 ├─ .github/workflows/tests.yml CI على GitHub
@@ -91,18 +96,24 @@
 
 ## 🚀 التشغيل
 
-### 1) توليد سريع (سطر أوامر)
+### 1) التطبيق — مركز التحكم الكامل ⭐
+كل حاجة من الواجهة: توليد · استنساخ · دفعي · فحص نطق · قاموس · إعدادات (بدون أي كود).
 ```powershell
-.\.venv\Scripts\python.exe poc_generate.py --speaker Sayed --text "أهلاً بيك في تطبيقنا الجديد"
+.\.venv\Scripts\python.exe frontend\app_gradio.py                 # http://127.0.0.1:7860
+.\.venv\Scripts\python.exe frontend\app_gradio.py --share          # رابط عام مؤقّت
+.\.venv\Scripts\python.exe frontend\app_gradio.py --engine local   # مباشر على GPU (Colab)
 ```
-أو من ملف نصي:
-```powershell
-.\.venv\Scripts\python.exe poc_generate.py --speaker Yasmin --text-file data\scripts\ad1.txt --out data\outputs\ad1.wav
-```
-استنساخ صوت من مقطع مرجعي:
-```powershell
-.\.venv\Scripts\python.exe poc_generate.py --ref-audio my_voice.wav --ref-text "النص المرجعي" --text "كلام جديد بالعامية"
-```
+
+| التاب | الوظيفة |
+| --- | --- |
+| 🔊 **توليد** | نص + صوت + **معاينة النطق** بعد التطبيع |
+| 🧬 **استنساخ صوت** | مقطع مرجعي 10–30 ثانية (بموافقة صاحب الصوت) |
+| 📦 **دفعي** | ملفات `.txt` → ملف zip (سمّ الملف `اسم__الصوت.txt`) |
+| 🔎 **فاحص النطق** | ASR + مقارنة بالنص **بالحرف** (أحرف ناقصة/زيادة) |
+| 📖 **قاموس النطق** | كلمات/براندات بنطقها المخصوص |
+| ⚙️ **الإعدادات** | نوع المحرك + السيرفر + التوكن + الموديل — **تُحفظ تلقائيًا** |
+
+> على **Colab**: نفس التطبيق شغّال بضغطة واحدة من [`deploy/colab_free_gpu.ipynb`](deploy/colab_free_gpu.ipynb) (مع رابط عام تشتغل منه في المتصفح).
 
 ### 2) سيرفر الـ API
 ```powershell
@@ -115,20 +126,15 @@
 
 ثم افتح الواجهة في المتصفح: **http://127.0.0.1:8000/**
 
-### 3) واجهة Gradio (اختيارية)
-بديل جاهز للعرض/التسليم للعميل (توليد + استنساخ + كل الإعدادات):
+### 3) توليد سريع (سطر أوامر)
 ```powershell
-.\.venv\Scripts\python.exe frontend\app_gradio.py            # http://127.0.0.1:7860
-.\.venv\Scripts\python.exe frontend\app_gradio.py --share     # رابط عام مؤقّت
+.\.venv\Scripts\python.exe poc_generate.py --speaker Sayed --text "أهلاً بيك في تطبيقنا الجديد"
+.\.venv\Scripts\python.exe batch_generate.py --speaker Sayed --multiband voice --mp3 --zip ads.zip
+.\.venv\Scripts\python.exe -m backend.qa.asr_check data\outputs\ad1.wav "النص الأصلي المتوقع"
 ```
 
-> 💡 **لو الكوتة المجانية للـ Space خلصت** (خطأ: «الكوتة المجانية خلصت»)، احفظ توكن Hugging Face **مرة واحدة**:
-> ```powershell
-> .\.venv\Scripts\python.exe set_hf_token.py        # الصق التوكن (مخفي) → يُحفظ في مكانه القياسي
-> .\.venv\Scripts\python.exe set_hf_token.py --check
-> ```
-> بعدها كل الأدوات (الـ API / الـ CLI / Gradio) هتلاقي التوكن لوحدها — بدون تعديل أي كود. التوكن بيتحفظ **بره الريبو** ومش بيتعمل له commit.
-> (تجيب التوكن من: https://huggingface.co/settings/tokens — النوع: Read)
+> 💡 **نوع المحرك** (من تاب الإعدادات أو `TTS_ENGINE`): `remote` (Space جاهز) · `server` (GPU سحابي بتاعك) · `local` (مباشر على GPU).<br>
+> لو الكوتة المجانية للـ Space خلصت، إمّا تشغّل `local` على Colab/GPU، أو تعمل محرك `server` على RunPod/Vast، أو تحفظ توكن HuggingFace بـ `set_hf_token.py` لكوتة أعلى.
 
 ---
 

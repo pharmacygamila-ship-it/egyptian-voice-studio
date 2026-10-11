@@ -16,6 +16,10 @@ data/refs/
 /models/
 /outputs/
 
+# إعدادات التطبيق + قاموس المستخدم (فيهم توكنات)
+data/app_settings.json
+data/user_lexicon.json
+
 # لوجات
 *.log
 

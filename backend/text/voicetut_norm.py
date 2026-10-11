@@ -27,6 +27,16 @@ def available() -> bool:
     return True
 
 
+def reset() -> None:
+    """يفرّغ كاش المطبّعات (لما قاموس المستخدم يتغيّر)."""
+    _CACHE.clear()
+
+
+def _is_latin(token: str) -> bool:
+    """هل الكلمة لاتينية (إنجليزي)؟ عشان نوجّهها لجدول الأسماء."""
+    return any("a" <= ch.lower() <= "z" for ch in token)
+
+
 def _get(diacritics: bool, numbers: bool, names: bool, keep_latin: bool):
     key = (diacritics, numbers, names, keep_latin)
     cached = _CACHE.get(key)
@@ -66,5 +76,11 @@ def normalize(
         return ""
     n = _get(diacritics, numbers, names, keep_latin)
     if lexicon:
-        n.add_names(dict(lexicon))
+        # اللاتيني (براند/اسم إنجليزي) → جدول الأسماء، والعربي → جدول الكلمات المشكّلة
+        names_map = {k: v for k, v in lexicon.items() if _is_latin(k)}
+        words_map = {k: v for k, v in lexicon.items() if not _is_latin(k)}
+        if names_map:
+            n.add_names(names_map)
+        if words_map:
+            n.add_lexicon(words_map)
     return n(text)
