@@ -15,6 +15,7 @@ from __future__ import annotations
 import re
 
 from . import numbers as _numbers
+from .diacritics import apply_diacritics
 from .lexicon import apply_lexicon, expand_units
 
 # أرقام عربية شرقية → غربية
@@ -76,6 +77,7 @@ def normalize_egyptian(
     fold_digits: bool = True,
     numbers: bool = True,
     use_lexicon: bool = True,
+    diacritics: bool = False,
     clean: bool = True,
 ) -> str:
     """تطبيع النص المصري.
@@ -84,6 +86,7 @@ def normalize_egyptian(
         fold_digits : يحوّل الأرقام الشرقية (٥) لغربية (5)
         numbers     : يحوّل الأرقام لكلام مصري (50 → خمسين)
         use_lexicon : يستبدل الكلمات الأجنبية بنطق مصري (واتساب)
+        diacritics  : يشكّل كلمات إعلانية ملتبسة (اختياري — راجع diacritics.py)
         clean       : يشيل الإيموجي والتطويل والحروف المكرّرة
     """
     if not text:
@@ -114,6 +117,9 @@ def normalize_egyptian(
 
     if use_lexicon:
         out = apply_lexicon(out)
+
+    if diacritics:
+        out = apply_diacritics(out)
 
     # وحدات ملزوقة بالأرقام: 5kg → 5 كيلوجرام (قبل توسيع الأرقام)
     out = expand_units(out)

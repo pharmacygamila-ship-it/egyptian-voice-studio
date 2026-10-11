@@ -14,6 +14,7 @@ try:
 except Exception:  # noqa: BLE001
     pass
 
+from backend.text.diacritics import apply_diacritics  # noqa: E402
 from backend.text.lexicon import apply_lexicon, expand_units  # noqa: E402
 from backend.text.normalize import normalize_egyptian  # noqa: E402
 from backend.text.numbers import digits_to_words, expand_numbers, int_to_words  # noqa: E402
@@ -94,6 +95,24 @@ check("normalize: numbers=False", normalize_egyptian("٥٠ جنيه", numbers=Fa
 check(
     "normalize: use_lexicon=False",
     normalize_egyptian("WhatsApp", use_lexicon=False) == "WhatsApp",
+)
+
+# ── 5) براندات وشركات ────────────────────────────────────────────────────
+check("lexicon: بيبسي", apply_lexicon("اشرب Pepsi") == "اشرب بيبسي")
+check("lexicon: فودافون", apply_lexicon("عرض من Vodafone") == "عرض من فودافون")
+check("lexicon: ماكدونالدز", apply_lexicon("McDonald's") == "ماكدونالدز")
+check("lexicon: طلبات", apply_lexicon("اطلب من Talabat") == "اطلب من طلبات")
+
+# ── 6) التشكيل (opt-in) ──────────────────────────────────────────────────
+check("diacritics: عرض", apply_diacritics("عرض خاص") == "عَرْض خاص")
+check("diacritics: خصم", apply_diacritics("خصم 50") == "خَصْم 50")
+check(
+    "normalize: diacritics=True",
+    normalize_egyptian("خصم 50", diacritics=True) == "خَصْم خمسين",
+)
+check(
+    "normalize: diacritics مقفول افتراضياً",
+    normalize_egyptian("خصم 50") == "خصم خمسين",
 )
 
 print(f"\n==> {total} اختبار |", "كله تمام ✅" if ok else "فيه فشل ❌")
