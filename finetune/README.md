@@ -72,16 +72,25 @@ finetune/dataset/
 .\.venv\Scripts\python.exe finetune\train_lora.py --check
 ```
 
-### 4) التدريب (محتاج GPU)
-```bash
-python finetune/train_lora.py --dataset finetune/dataset --epochs 20 --lora-rank 16
-```
-- مكان التشغيل: **Colab / RunPod / Modal** (نفس اللي في `deploy/`).
-- المخرج: adapter (LoRA) ينحمّل فوق الموديل الأساسي.
+### 4) التدريب (محتاج GPU) — بالكامل على Colab
+افتح نوتبوك **`deploy/colab_train_voice.ipynb`** → ارفع زومبي التسجيلات → شغّل الخلايا
+بالترتيب. (أو يدويًا: `python finetune/train_lora.py --dataset finetune/dataset --name voice_client`)
 
-> 🔌 **نقطة تركيب:** الـ API الرسمي **للتدريب** في OmniVoice بيتغيّر بين الإصدارات،
-> فدالة `build_trainer()` في `finetune/train_lora.py` فيها مكان واضح توصّل فيه
-> الـ trainer الرسمي حسب نسختك (rank/alpha/LR كلها جاهزة في `TrainConfig`).
+بيشغّل؛ المسار **الرسمي** لـ OmniVoice (LoRA):
+1. تحويل `train/val.jsonl` لـ manifests بصيغة OmniVoice + tokenize (higgs-audio-v2)
+2. تدريب LoRA فوق **`mohammedaly22/VoiceTut-TTS`** (بيحافظ على العربي المصري) عبر `accelerate`
+3. دمج الـ adapter في **موديل كامل** (merge) + تغليف zips
+
+المخرجات في `finetune/runs/<name>/`:
+| الملف | الاستخدام |
+| --- | --- |
+| `<name>_adapter.zip` | adapter صغير للتحميل فوق الموديل الأساسي |
+| `<name>_model.zip` | **موديل كامل مدموج** — يحمّله السيرفر (`TTS_MODEL`) |
+| `<name>.json` | بطاقة الصوت (الكلاود في فضل النسخ) |
+
+> 🚀 بعد التدريب، النوتبوك بيقدّم خيار تشغيل **سيرفر الموديل بالموديل المدرب** مباشرة
+> (بيطلع رابط + مفتاح للتطبيق). والاستخدام الأقوى: **استنساخ بمقطع 10–15 ثانية** من
+> العميل فوق الموديل المدرب — أعلى تشابه ممكن.
 
 ### 5) التقييم (اختياري بس مفيد)
 - **WER**: أعِد تفريغ الناتج بـ ASR مصري → يكشف النطق الغلط.

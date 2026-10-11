@@ -64,6 +64,10 @@ class TTSBody(BaseModel):
         None, description="ضغط متعدد النطاقات: voice / warm / punch / broadcast"
     )
     fmt: str = Field("wav", description="صيغة الناتج: wav أو mp3")
+    target_sr: int | None = Field(
+        None, ge=8000, le=48000, description="إعادة تنميط الإخراج (مثلاً 48000 للإنتاج)"
+    )
+    mp3_bitrate: int = Field(192, ge=96, le=320, description="معدل بت MP3 (نفس جودة أعلى)")
 
 
 @app.get("/health")
@@ -71,6 +75,7 @@ def health() -> dict:
     return {
         "ok": True,
         "engine": engine.name,
+        "model": getattr(engine, "model_id", ""),
         "auth_required": bool(os.getenv("TTS_SERVER_TOKEN")),
         "version": app.version,
     }
@@ -105,10 +110,10 @@ def warmup() -> dict:
     return {"ok": True, "engine": engine.name}
 
 
-def _finish(path: str, fmt: str) -> FileResponse:
+def _finish(path: str, fmt: str, *, bitrate: int = 192) -> FileResponse:
     """يصدّر للصيغة المطلوبة (wav/mp3) ويرجّع الملف."""
     try:
-        path = export(path, fmt)
+        path = export(path, fmt, bitrate=bitrate)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return FileResponse(path, media_type=media_type(path), filename=os.path.basename(path))
@@ -135,8 +140,13 @@ def tts(body: TTSBody) -> FileResponse:
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     if body.postprocess:
-        path = postprocess(path, target_lufs=body.lufs, multiband=body.multiband)
-    return _finish(path, body.fmt)
+        path = postprocess(
+            path,
+            target_lufs=body.lufs,
+            multiband=body.multiband,
+            target_sr=body.target_sr,
+        )
+    return _finish(path, body.fmt, bitrate=body.mp3_bitrate)
 
 
 @app.post("/clone", dependencies=[Depends(require_token)])
@@ -153,6 +163,8 @@ async def clone(
     lufs: float = Form(-14.0),
     multiband: str | None = Form(None),
     fmt: str = Form("wav"),
+    target_sr: int | None = Form(None),
+    mp3_bitrate: int = Form(192),
 ) -> FileResponse:
     ref_path = os.path.join(OUTPUT_DIR, f"ref_{uuid.uuid4().hex[:8]}.wav")
     with open(ref_path, "wb") as fh:
@@ -173,5 +185,10 @@ async def clone(
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     if postprocess_out:
-        path = postprocess(path, target_lufs=lufs, multiband=multiband)
-    return _finish(path, fmt)
+        path = postprocess(
+            path,
+            target_lufs=lufs,
+            multiband=multiband,
+            target_sr=target_sr,
+        )
+    return _finish(path, fmt, bitrate=mp3_bitrate)

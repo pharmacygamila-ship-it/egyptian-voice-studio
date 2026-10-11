@@ -139,6 +139,14 @@ try:
 except Exception:  # noqa: BLE001
     check("simple_synth: يرفض النص الفاضي", True)
 
+# ── 4c) جودة عالية (48kHz + معدل بت أعلى) ────────────────────────────────
+path4, info4 = app.synth_ui("جرب صوت عالي", "Sayed", 64, 2.5, 0.95,
+                            True, False, True, -14, "voice", "wav", 48000, 320)
+check("synth_ui: target_sr=48000 اتحترم", "48000Hz" in info4)
+path4b, info4b = app.synth_ui("جرب mp3 عالي", "Sayed", 64, 2.5, 0.95,
+                              True, False, True, -14, "voice", "mp3", 48000, 320)
+check("synth_ui: mp3 48kHz اتكتب", path4b.endswith(".mp3") and os.path.exists(path4b))
+
 # ── 5) list_speakers من المحرك ───────────────────────────────────────────
 check("list_speakers: من المحرك", app.list_speakers() == ["Sayed", "Yasmin"])
 

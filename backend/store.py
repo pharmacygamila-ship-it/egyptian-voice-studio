@@ -34,6 +34,8 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "lufs": -14,
     "multiband": "voice",
     "fmt": "wav",
+    "target_sr": 48000,
+    "mp3_bitrate": 320,
 }
 
 

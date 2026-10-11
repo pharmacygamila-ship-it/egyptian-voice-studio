@@ -46,6 +46,10 @@ def wav_to_mp3(
 
         data, sr = resample_audio(data, sr, _nearest_rate(sr))
 
+    # MPEG-1 (32–48kHz) بيوصل 320kbps، لكن MPEG-2 (16–24kHz) الحد الأقصى 160kbps
+    max_bitrate = 320 if sr >= 32000 else 160
+    bitrate = min(int(bitrate), max_bitrate)
+
     try:
         blob = _encode_mp3_lameenc(data, sr, bitrate)
     except ImportError:

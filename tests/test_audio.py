@@ -19,7 +19,7 @@ try:
 except Exception:  # noqa: BLE001
     pass
 
-from backend.audio.export import export, media_type  # noqa: E402
+from backend.audio.export import estimate_bitrate_kbps, export, media_type  # noqa: E402
 from backend.audio.postprocess import (  # noqa: E402
     MULTIBAND_PRESETS,
     analyze,
@@ -197,6 +197,9 @@ check("export mp3: بصمة MP3 صحيحة", head[:3] == b"ID3" or head[0] == 0x
 back, _ = sf.read(mp3_path, always_2d=False, dtype="float32")
 check("export mp3: قابل للقراءة", back.size > 0)
 check("export mp3: media_type", media_type(mp3_path) == "audio/mpeg")
+mp3_320 = export(out48, "mp3", bitrate=320)
+check("export mp3 320: الملف اتكتب", os.path.exists(mp3_320) and os.path.getsize(mp3_320) > 1000)
+check("export mp3 320: معدل البت أعلى من 192k", estimate_bitrate_kbps(mp3_320) > 200)
 check("export wav: بيرجّع نفس المسار", export(out_path, "wav") == out_path)
 try:
     export(out_path, "ogg")

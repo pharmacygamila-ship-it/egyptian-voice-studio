@@ -13,6 +13,7 @@ def build_engine(kind: str | None = None, **kwargs) -> TTSEngine:
     if kind == "local":
         from .local_voicetut import LocalVoiceTutEngine
 
+        kwargs.setdefault("model_id", os.getenv("TTS_MODEL") or "mohammedaly22/VoiceTut-TTS")
         return LocalVoiceTutEngine(**kwargs)
     if kind == "server":
         from .server_client import ServerVoiceTutEngine

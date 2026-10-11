@@ -11,6 +11,8 @@
 """
 from __future__ import annotations
 
+import os
+
 from .base import Speaker, SynthRequest, TTSEngine
 from .remote_voicetut import _BUILTIN
 
@@ -18,7 +20,12 @@ from .remote_voicetut import _BUILTIN
 class LocalVoiceTutEngine(TTSEngine):
     name = "local-voicetut"
 
-    def __init__(self, model_id: str = "mohammedaly22/VoiceTut-TTS", device: str = "cuda") -> None:
+    def __init__(
+        self,
+        model_id: str | None = None,
+        device: str = "cuda",
+    ) -> None:
+        model_id = model_id or os.getenv("TTS_MODEL") or "mohammedaly22/VoiceTut-TTS"
         try:
             from voicetut_tts import VoiceTutTTS  # type: ignore
         except ImportError as exc:  # pragma: no cover
@@ -28,6 +35,7 @@ class LocalVoiceTutEngine(TTSEngine):
             ) from exc
         self.tts = VoiceTutTTS.from_pretrained(model_id)
         self.device = device
+        self.model_id = model_id
 
     def list_speakers(self) -> list[Speaker]:
         return list(_BUILTIN.values())

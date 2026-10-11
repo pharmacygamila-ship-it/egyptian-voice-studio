@@ -123,5 +123,53 @@ try:
 except FileNotFoundError:
     check("check_dataset: يرفض داتاسِت ناقص", True)
 
+# ── المرحلة 0: تحويل الـ manifests بصيغة OmniVoice ───────────────────────
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+from finetune.train_lora import write_manifests  # noqa: E402
+
+man_dir = os.path.join(tmp, "manifests")
+counts = write_manifests(out, man_dir)
+check("write_manifests: train + dev = 3", counts["train"] + counts["dev"] == 3)
+
+_train_rows = [
+    json.loads(l) for l in open(os.path.join(man_dir, "train.jsonl"), encoding="utf-8") if l.strip()
+]
+_dev_rows = [
+    json.loads(l) for l in open(os.path.join(man_dir, "dev.jsonl"), encoding="utf-8") if l.strip()
+]
+_all = _train_rows + _dev_rows
+check(
+    "write_manifests: الحقول كاملة",
+    all({"id", "audio_path", "text", "language_id"} <= set(r) for r in _all),
+)
+check("write_manifests: مسارات مطلقة وموجودة", all(os.path.isfile(r["audio_path"]) for r in _all))
+check("write_manifests: لغة arz", all(r["language_id"] == "arz" for r in _all))
+check("write_manifests: نصوص غير فاضية", all(str(r["text"]).strip() for r in _all))
+
+# ── configs التدريب الرسمية ──────────────────────────────────────────────
+tr_cfg = json.load(open(os.path.join(ROOT, "finetune", "config", "train_config_finetune_lora.json")))
+check("train_config: use_lora", tr_cfg.get("use_lora") is True)
+check("train_config: أساسه VoiceTut المصري",
+      tr_cfg.get("init_from_checkpoint") == "mohammedaly22/VoiceTut-TTS")
+check("train_config: lora_target_modules متاح", len(tr_cfg.get("lora_target_modules", [])) > 0)
+
+dt_cfg = json.load(open(os.path.join(ROOT, "finetune", "config", "data_config_finetune.json")))
+check("data_config: train lst موجود",
+      "finetune/runs/tokens/train/data.lst" in str(dt_cfg.get("train")))
+check("data_config: dev lst موجود",
+      "finetune/runs/tokens/dev/data.lst" in str(dt_cfg.get("dev")))
+
+# ── train_lora --check (من غير GPU) ──────────────────────────────────────
+import subprocess  # noqa: E402
+
+env = os.environ.copy()
+env["PYTHONUTF8"] = "1"
+proc = subprocess.run(
+    [sys.executable, "finetune/train_lora.py", "--check", "--dataset", out],
+    cwd=ROOT, env=env, capture_output=True, text=True,
+)
+check("train_lora --check: يخرج 0", proc.returncode == 0)
+check("train_lora --check: الخطة في المخرج", "خطة التدريب" in proc.stdout)
+
 print(f"\n==> {total} اختبار |", "كله تمام ✅" if ok else "فيه فشل ❌")
 raise SystemExit(0 if ok else 1)

@@ -163,11 +163,17 @@ def _out_path(prefix: str) -> str:
     return os.path.join(OUTPUT_DIR, f"{prefix}_{uuid.uuid4().hex[:8]}.wav")
 
 
-def _finish(path: str, postprocess_on: bool, lufs: float, multiband: str, fmt: str) -> tuple[str, str]:
+def _finish(path: str, postprocess_on: bool, lufs: float, multiband: str, fmt: str,
+            *, target_sr: int | None = None, mp3_bitrate: int = 192) -> tuple[str, str]:
     """معالجة + تصدير + تقرير مختصر."""
     if postprocess_on:
-        path = postprocess(path, target_lufs=float(lufs), multiband=(multiband or None))
-    path = export(path, fmt)
+        path = postprocess(
+            path,
+            target_lufs=float(lufs),
+            multiband=(multiband or None),
+            target_sr=int(target_sr) if target_sr else None,
+        )
+    path = export(path, fmt, bitrate=int(mp3_bitrate))
     rep = analyze(path)
     info = (
         f"{rep['seconds']:.2f} ثانية · {rep['lufs']:.1f} LUFS · "
@@ -189,6 +195,7 @@ def _as_path(obj) -> str | None:
 def synth_ui(
     text, speaker, steps, guidance, speed,
     normalize, diacritics, postprocess_on, lufs, multiband, fmt,
+    target_sr=None, mp3_bitrate=192,
 ):
     import gradio as gr
 
@@ -205,7 +212,8 @@ def synth_ui(
         path = get_engine().synthesize(req, out)
     except Exception as exc:  # noqa: BLE001
         raise gr.Error(f"فشل التوليد: {exc}") from exc
-    return _finish(path, postprocess_on, lufs, multiband, fmt)
+    return _finish(path, postprocess_on, lufs, multiband, fmt,
+                   target_sr=target_sr, mp3_bitrate=mp3_bitrate)
 
 
 def simple_synth(text, speaker, steps, guidance, speed):
@@ -214,6 +222,7 @@ def simple_synth(text, speaker, steps, guidance, speed):
 
     if not (text or "").strip():
         raise gr.Error("اكتب نص الإعلان الأول")
+    settings = store.load_settings()
     clean = prepare_text(text, True, True)  # تطبيع + تشكيل دايماً في الوضع البسيط
     out = _out_path("tts")
     req = SynthRequest(
@@ -228,8 +237,13 @@ def simple_synth(text, speaker, steps, guidance, speed):
         path = get_engine().synthesize(req, out)
     except Exception as exc:  # noqa: BLE001
         raise gr.Error(f"فشل التوليد: {exc}") from exc
-    path = postprocess(path, target_lufs=-14.0, multiband="voice")
-    path = export(path, "mp3")
+    path = postprocess(
+        path,
+        target_lufs=-14.0,
+        multiband="voice",
+        target_sr=int(settings.get("target_sr", 48000)) if settings.get("target_sr") else None,
+    )
+    path = export(path, "mp3", bitrate=int(settings.get("mp3_bitrate", 320)))
     rep = analyze(path)
     md = (
         f"✅ **الصوت جاهز** · {rep['seconds']:.2f} ثانية · {int(rep['sr'])}Hz · MP3\n"
@@ -241,6 +255,7 @@ def simple_synth(text, speaker, steps, guidance, speed):
 def clone_ui(
     ref_audio, ref_text, text, steps, guidance, speed,
     normalize, diacritics, postprocess_on, lufs, multiband, fmt,
+    target_sr=None, mp3_bitrate=192,
 ):
     import gradio as gr
 
@@ -261,13 +276,15 @@ def clone_ui(
         path = get_engine().clone(req, out)
     except Exception as exc:  # noqa: BLE001
         raise gr.Error(f"فشل الاستنساخ: {exc}") from exc
-    return _finish(path, postprocess_on, lufs, multiband, fmt)
+    return _finish(path, postprocess_on, lufs, multiband, fmt,
+                   target_sr=target_sr, mp3_bitrate=mp3_bitrate)
 
 
 # ── التوليد الدفعي ───────────────────────────────────────────────────────
 def batch_ui(
     files, speaker, steps, guidance, speed,
     normalize, diacritics, postprocess_on, lufs, multiband, fmt,
+    target_sr=None, mp3_bitrate=192,
 ):
     import gradio as gr
 
@@ -295,7 +312,8 @@ def batch_ui(
                 guidance=float(guidance), speed=float(speed), normalize=False,
             )
             p = get_engine().synthesize(req, out)
-            p, info = _finish(p, postprocess_on, lufs, multiband, fmt)
+            p, info = _finish(p, postprocess_on, lufs, multiband, fmt,
+                              target_sr=target_sr, mp3_bitrate=mp3_bitrate)
             produced.append(p)
             lines.append(f"✓ {name} ({spk}) — {info}")
         except Exception as exc:  # noqa: BLE001
@@ -441,6 +459,15 @@ def build_interface(speakers: list[str] | None = None):
                 postprocess_on = gr.Checkbox(bool(settings.get("postprocess", True)), label="معالجة صوتية احترافية")
                 diacritics = gr.Checkbox(bool(settings.get("diacritics", True)), label="تشكيل / نطق أدق")
                 normalize = gr.Checkbox(True, label="تطبيع النص المصري")
+            with gr.Row():
+                target_sr = gr.Dropdown(
+                    [24000, 48000], value=int(settings.get("target_sr", 48000)),
+                    label="جودة المخرج (زيادة التردد = أنعم)",
+                )
+                mp3_bitrate = gr.Dropdown(
+                    [192, 320], value=int(settings.get("mp3_bitrate", 320)),
+                    label="معدل البت MP3 (أعلى = جودة أعلى)",
+                )
 
         with gr.Tabs():
             # ── سريع وسهل (التبويب الافتراضي) ──
@@ -484,7 +511,8 @@ def build_interface(speakers: list[str] | None = None):
                 go.click(
                     synth_ui,
                     [text, speaker, steps, guidance, speed,
-                     normalize, diacritics, postprocess_on, lufs, multiband, fmt],
+                     normalize, diacritics, postprocess_on, lufs, multiband, fmt,
+                     target_sr, mp3_bitrate],
                     [out_audio, out_info],
                 )
 
@@ -499,7 +527,8 @@ def build_interface(speakers: list[str] | None = None):
                 go2.click(
                     clone_ui,
                     [ref, ref_text, text2, steps, guidance, speed,
-                     normalize, diacritics, postprocess_on, lufs, multiband, fmt],
+                     normalize, diacritics, postprocess_on, lufs, multiband, fmt,
+                     target_sr, mp3_bitrate],
                     [out_audio2, out_info2],
                 )
 
@@ -516,7 +545,8 @@ def build_interface(speakers: list[str] | None = None):
                 go3.click(
                     batch_ui,
                     [files, speaker, steps, guidance, speed,
-                     normalize, diacritics, postprocess_on, lufs, multiband, fmt],
+                     normalize, diacritics, postprocess_on, lufs, multiband, fmt,
+                     target_sr, mp3_bitrate],
                     [zip_out, batch_report],
                 )
 
