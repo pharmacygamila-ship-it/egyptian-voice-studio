@@ -37,7 +37,20 @@ def require_token(x_auth_token: str | None = Header(default=None)) -> None:
         raise HTTPException(status_code=401, detail="توكن غير صحيح")
 
 
-engine: TTSEngine = build_engine()
+# الموديل بيتحمّل عند أول استخدام، مش وقت بدء السيرفر — كده السيرفر بيرد فورًا
+# على /health والنفق العام بيطلع بسرعة، وتحميل الموديل (~2.5GB) بيحصل في /warmup
+# أو أول توليد (من غير ما يخلّي الشكل يوحي إن السيرفر واقع وبطيء).
+_engine: TTSEngine | None = None
+
+
+def get_engine() -> TTSEngine:
+    """يرجّع المحرك (ويبنيه مرة واحدة عند أول استخدام)."""
+    global _engine
+    if _engine is None:
+        _engine = build_engine()
+    return _engine
+
+
 app = FastAPI(title="Egyptian Voice Clone API", version="0.1.0")
 
 # يسمح لواجهة ويب في نطاق تاني (أو للتجربة) إنها تكلّم السيرفر ده.
@@ -72,10 +85,12 @@ class TTSBody(BaseModel):
 
 @app.get("/health")
 def health() -> dict:
+    kind = (os.getenv("TTS_ENGINE") or "remote").lower()
     return {
         "ok": True,
-        "engine": engine.name,
-        "model": getattr(engine, "model_id", ""),
+        "engine": _engine.name if _engine is not None else kind,
+        "model": os.getenv("TTS_MODEL", ""),
+        "loaded": _engine is not None,
         "auth_required": bool(os.getenv("TTS_SERVER_TOKEN")),
         "version": app.version,
     }
@@ -95,19 +110,26 @@ def index() -> FileResponse:
 
 @app.get("/voices")
 def voices() -> list[dict]:
-    return [s.__dict__ for s in engine.list_speakers()]
+    # قائمة الأصوات ثابتة جوه كل المحركات — بنرجّعها من غير ما نحمّل الموديل
+    # (عشان «اختبار الاتصال» في التطبيق يبقى سريع وزيه زي السيرفر).
+    if _engine is not None:
+        return [s.__dict__ for s in _engine.list_speakers()]
+    from backend.engine.remote_voicetut import _BUILTIN
+
+    return [s.__dict__ for s in _BUILTIN.values()]
 
 
 @app.post("/warmup", dependencies=[Depends(require_token)])
 def warmup() -> dict:
     """يحمّل الموديل مسبقًا (اختياري) عشان أول طلب من التطبيق يبقى سريع."""
+    eng = get_engine()
     out = os.path.join(OUTPUT_DIR, "warmup.wav")
     req = SynthRequest(text="تجهيز", speaker="Sayed", steps=8, normalize=False)
     try:
-        engine.synthesize(req, out)
+        eng.synthesize(req, out)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=502, detail=str(exc)) from exc
-    return {"ok": True, "engine": engine.name}
+    return {"ok": True, "engine": eng.name}
 
 
 def _finish(path: str, fmt: str, *, bitrate: int = 192) -> FileResponse:
@@ -136,7 +158,7 @@ def tts(body: TTSBody) -> FileResponse:
         normalize=False,
     )
     try:
-        path = engine.synthesize(req, out)
+        path = get_engine().synthesize(req, out)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     if body.postprocess:
@@ -181,7 +203,7 @@ async def clone(
         normalize=False,
     )
     try:
-        path = engine.clone(req, out)
+        path = get_engine().clone(req, out)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     if postprocess_out:
